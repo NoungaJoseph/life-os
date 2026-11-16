@@ -9,6 +9,7 @@ export interface Profile {
 }
 
 export interface Preferences {
+  tutorial?: { tour_seen?: boolean; seen?: Record<string, boolean> };
   challenges?: { obstacles?: string; distractions?: string; improve?: string };
   planning?: { daily: boolean; weekly: boolean; monthly: boolean };
   routine?: {

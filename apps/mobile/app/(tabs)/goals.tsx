@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, View } from 'react-native';
 import { GoalRow } from '../../src/components/domain';
+import { FirstVisitTip } from '../../src/components/Tutorial';
 import { Chip, EmptyState, ErrorState, FadeIn, Header, Loading, Screen, SectionHeader } from '../../src/components/ui';
 import { errorMessage } from '../../src/lib/errors';
 import { useGoalsOverview } from '../../src/lib/hooks';
@@ -25,6 +26,7 @@ export default function Goals() {
 
   return (
     <Screen onRefresh={() => void q.refetch()} refreshing={q.isRefetching} bottomPad={130}>
+      <FirstVisitTip screen="goals" />
       <Header title={tr('goals.title')} subtitle={tr('goals.subtitle')} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8, paddingVertical: 2 }}>
         <Chip label={tr('goals.all')} selected={filter === 'all'} onPress={() => setFilter('all')} />

@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Platform, Pressable, View } from 'react-native';
 import { Card, Check, EmptyState, ErrorState, FadeIn, Header, Loading, Pill, Screen, SectionHeader, Text, tap } from '../../src/components/ui';
+import { FirstVisitTip } from '../../src/components/Tutorial';
 import { api } from '../../src/lib/api';
 import { errorMessage } from '../../src/lib/errors';
 import { addDays, dayNum, prettyDate, shortDays, weekStart } from '../../src/lib/dates';
@@ -64,6 +65,7 @@ export default function Planner() {
 
   return (
     <Screen onRefresh={() => void refresh()} refreshing={tasks.isRefetching} bottomPad={130}>
+      <FirstVisitTip screen="planner" />
       <Header title={tr('planner.title')} subtitle={prettyDate(date)} />
 
       <View className="flex-row items-center gap-[4px]">

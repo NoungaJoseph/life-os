@@ -5,8 +5,9 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, View, useWindowDimensions } from 'react-native';
 import { BalanceBar, GoalRow, InsightCard } from '../../src/components/domain';
+import { FirstVisitTip } from '../../src/components/Tutorial';
 import {
-  Card, Check, EmptyState, ErrorState, FadeIn, Hero, Loading, Pill, Press, ProgressRing, Screen, SectionHeader, Text,
+  Card, Check, EmptyState, ErrorState, FadeIn, Hero, Loading, Pill, Press, ProgressBar, ProgressRing, Screen, SectionHeader, Text,
 } from '../../src/components/ui';
 import { prettyDate } from '../../src/lib/dates';
 import { errorMessage } from '../../src/lib/errors';
@@ -31,9 +32,15 @@ export default function Home() {
   const intentions = tr('home.intentions', { returnObjects: true }) as unknown as string[];
   const intention = intentions[Math.floor(Date.now() / 86_400_000) % intentions.length];
   const hasData = d.priorities.length + d.habits.length + d.goals.length > 0;
+  const setup = [
+    { key: 'profile', done: true }, { key: 'goal', done: d.goals.length > 0 }, { key: 'habit', done: d.habits.length > 0 },
+    { key: 'money', done: false }, { key: 'pin', done: true },
+  ] as const;
+  const setupDone = setup.filter((item) => item.done).length;
 
   return (
     <Screen onRefresh={() => void q.refetch()} refreshing={q.isRefetching} bottomPad={130}>
+      <FirstVisitTip screen="home" />
       <FadeIn>
         <Hero>
           <View className="flex-row items-center gap-[16px]">
@@ -53,6 +60,12 @@ export default function Home() {
         </Hero>
       </FadeIn>
       {d.momentum === null && <Text size="xs" muted>{tr('home.momentumHint')}</Text>}
+
+      {setupDone < setup.length && <Card className="gap-3">
+        <View className="flex-row items-center justify-between"><Text weight="700">{tr('tutorial.checklist.title')}</Text><Pill label={tr('tutorial.checklist.body', { done: setupDone, total: setup.length })} tone="accent" /></View>
+        <ProgressBar value={setupDone / setup.length} tone="accent" />
+        {setup.map((item) => <View key={item.key} className="flex-row items-center gap-3"><Ionicons name={item.done ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={item.done ? t.success : t.border} /><Text size="sm" muted={!item.done}>{tr(`tutorial.checklist.${item.key}`)}</Text></View>)}
+      </Card>}
 
       {!hasData && (
         <Card><EmptyState icon="rocket-outline" title={tr('home.emptyTitle')} body={tr('home.emptyBody')} /></Card>

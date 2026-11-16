@@ -41,6 +41,21 @@ const base: Deep<BaseCatalog> = {
       passwordMatch: 'Les mots de passe ne correspondent pas.',
     },
   },
+  tutorial: {
+    skip: 'Passer la visite', next: 'Suivant', finish: 'Commencer mon parcours', replay: 'Revoir le tutoriel', replayHint: 'Afficher à nouveau la visite de bienvenue et les conseils de première visite.', progress: '{{current}} sur {{total}}',
+    cards: {
+      oneTitle: 'Un espace calme pour votre vie', oneBody: 'Réunissez vos objectifs, vos projets, vos habitudes et vos choix financiers sans vous disperser.',
+      twoTitle: "Passez de l'intention à l'action", twoBody: "Transformez vos objectifs importants en tâches et habitudes du jour, puis suivez clairement vos progrès.",
+      threeTitle: 'Avancez avec régularité', threeBody: 'Appuyez-vous sur les rappels, les bilans et des conseils utiles, sans culpabilité ni jugement.',
+      fourTitle: 'Donnez un rôle à chaque franc', fourBody: 'Suivez vos finances et préparez une épargne alignée sur vos vraies priorités.',
+      fiveTitle: 'Votre vie reste privée', fiveBody: 'Votre compte, le code PIN et la gestion des appareils protègent vos informations personnelles.',
+    },
+    tipTitle: 'Conseil rapide', dismiss: 'Compris',
+    tips: {
+      home: "L'accueil rassemble les priorités, les habitudes et les progrès du jour.", goals: 'Ouvrez un objectif pour actualiser sa progression, ses étapes et la prochaine action.', planner: 'Utilisez les dates pour vous concentrer sur une journée et garder un programme réaliste.', habits: 'De petites actions répétées comptent plus qu’une série parfaite.', finance: 'Regardez ensemble les revenus, les dépenses et l’épargne avant votre prochaine décision.', settings: 'Vous pouvez relancer ce tutoriel ici à tout moment.', wallet: 'Le solde et chaque mouvement seront enregistrés dans le registre sécurisé.', vault: "L'argent du Coffre est réparti selon vos priorités et reste bloqué jusqu'à l'objectif.", groups: 'Chaque membre épargne son propre argent et le récupère à la date de fin.', transformation: 'Comparez votre situation actuelle et votre cible lors d’un bilan privé et bienveillant.', screenTime: 'Le blocage fonctionne seulement tant que les autorisations du téléphone restent actives.',
+    },
+    checklist: { title: 'Terminez la configuration', body: '{{done}} sur {{total}} prêts', profile: 'Compléter votre profil', goal: 'Créer votre premier objectif', habit: 'Ajouter votre première habitude', money: 'Ajouter de l’argent', pin: "Protéger l'application avec un code PIN" },
+  },
   sessions: {
     title: 'Appareils et sessions', subtitle: 'Voyez où vous êtes connecté.', thisDevice: 'Cet appareil', lastActive: 'Dernière activité {{when}}', signOut: 'Déconnecter', signOutOthers: 'Déconnecter tous les autres appareils',
     confirmOthers: 'Déconnecter tous les appareils sauf celui-ci ?', lock: "Verrouiller l'application", lockAfter: 'Verrouiller après', lockNow: 'Immédiatement', lock1: '1 minute', lock5: '5 minutes', empty: 'Aucun autre appareil.',

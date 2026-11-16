@@ -20,6 +20,7 @@ import { LockProvider, useLock } from '../src/lib/lock';
 import { signOutDevice } from '../src/lib/signOut';
 import { SessionProvider, useSession } from '../src/lib/session';
 import { Profile } from '../src/lib/types';
+import { hasSeenTour } from '../src/lib/tutorial';
 
 const CACHE_KEY = 'mylifeos-query-cache';
 const persister = createAsyncStoragePersister({ storage: AsyncStorage, key: CACHE_KEY, throttleTime: 2000 });
@@ -57,13 +58,22 @@ function Gate() {
   const lock = useLock();
   const chosen = useChosenLanguage();
   const group = segments[0] as string | undefined;
+  const visualTutorial = process.env.EXPO_PUBLIC_VISUAL_TESTS === '1' && group === 'tutorial';
   const done = profile.data?.onboarding_completed;
+  const [tourSeen, setTourSeen] = useState<boolean | undefined>(undefined);
 
   useEffect(() => { void loadLanguage(); }, []);
+  useEffect(() => {
+    let active = true;
+    if (!session?.user.id || !profile.data) { setTourSeen(undefined); return; }
+    void hasSeenTour(session.user.id, profile.data).then((seen) => { if (active) setTourSeen(seen); });
+    return () => { active = false; };
+  }, [profile.data, session?.user.id]);
   // A device that was signed out from another phone is dropped back to the welcome screen.
   useEffect(() => { setRevokedHandler(() => { void signOutDevice(); }); return () => setRevokedHandler(null); }, []);
 
   useEffect(() => {
+    if (visualTutorial) return;
     if (loading || chosen === undefined) return;
     if (chosen === null) { if (group !== 'language') router.replace('/language'); return; }
     if (!session) { if (group !== '(auth)' && group !== 'language') router.replace('/welcome'); return; }
@@ -72,10 +82,11 @@ function Gate() {
     if (lock.locked) { if (group !== 'unlock') router.replace('/unlock'); return; }
     if (!profile.data) return;
     if (!done && group !== 'onboarding') router.replace('/onboarding');
-    else if (done && (group === '(auth)' || group === 'unlock' || group === 'create-pin')) router.replace('/');
-  }, [loading, chosen, session, lock.hasPin, lock.locked, profile.data, done, group, router]);
+    else if (done && tourSeen === false && group !== 'tutorial') router.replace('/tutorial');
+    else if (done && tourSeen && (group === '(auth)' || group === 'unlock' || group === 'create-pin' || group === 'tutorial')) router.replace('/');
+  }, [loading, chosen, session, lock.hasPin, lock.locked, profile.data, done, tourSeen, group, router, visualTutorial]);
 
-  const waiting = loading || chosen === undefined || (session && (lock.hasPin === null || (!lock.locked && lock.hasPin && profile.isLoading)));
+  const waiting = !visualTutorial && (loading || chosen === undefined || (session && (lock.hasPin === null || (!lock.locked && lock.hasPin && (profile.isLoading || (done === true && tourSeen === undefined))))));
   if (waiting) return <Loading />;
   return (
     <View className="flex-1 bg-bg" style={themeVars(scheme)}>

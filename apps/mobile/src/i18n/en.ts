@@ -36,6 +36,21 @@ const base = {
       passwordMatch: 'The passwords do not match.',
     },
   },
+  tutorial: {
+    skip: 'Skip tour', next: 'Next', finish: 'Start my journey', replay: 'Replay tutorial', replayHint: 'Show the welcome tour and first-visit tips again.', progress: '{{current}} of {{total}}',
+    cards: {
+      oneTitle: 'One calm place for your life', oneBody: 'Bring your goals, plans, routines and money decisions together without the noise.',
+      twoTitle: 'Turn direction into action', twoBody: 'Break meaningful goals into today\'s tasks and habits, then see your progress clearly.',
+      threeTitle: 'Build consistency gently', threeBody: 'Use reminders, reviews and helpful insights without guilt or judgment.',
+      fourTitle: 'Give every franc a purpose', fourBody: 'Track your finances and prepare for savings tools built around your real priorities.',
+      fiveTitle: 'Private by design', fiveBody: 'Your account, app PIN and device sessions help keep your personal life protected.',
+    },
+    tipTitle: 'A quick tip', dismiss: 'Got it',
+    tips: {
+      home: 'Your Home screen brings today\'s priorities, habits and progress together.', goals: 'Open a goal to update progress, milestones and the next action.', planner: 'Use the date controls to focus on one day and keep your plan realistic.', habits: 'Small repeated actions matter more than a perfect streak.', finance: 'Review income, spending and savings together before making the next money decision.', settings: 'You can replay this tour here whenever you need a refresher.', wallet: 'Your wallet balance and every movement will be recorded in the secure ledger.', vault: 'Vault money is split across priorities and stays locked until a goal is reached.', groups: 'Each member saves their own money and receives their own savings at the end date.', transformation: 'Compare your current and target self with a private, supportive check-in.', screenTime: 'Blocking works only while the required phone permissions remain enabled.',
+    },
+    checklist: { title: 'Complete your setup', body: '{{done}} of {{total}} ready', profile: 'Complete your profile', goal: 'Create your first goal', habit: 'Add your first habit', money: 'Add money', pin: 'Protect the app with a PIN' },
+  },
   sessions: {
     title: 'Devices and sessions', subtitle: 'See where you are signed in.', thisDevice: 'This device', lastActive: 'Last active {{when}}', signOut: 'Sign out', signOutOthers: 'Sign out all other devices',
     confirmOthers: 'Sign out every device except this one?', lock: 'Lock the app', lockAfter: 'Lock after', lockNow: 'Immediately', lock1: '1 minute', lock5: '5 minutes', empty: 'No other devices.',

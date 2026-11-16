@@ -105,14 +105,18 @@ The AI coach, goal breakdown and journal reflections call the Claude API. Set `A
 ```
 cd server
 npm test            # unit tests: insights engine, AI output parsing
-npm run test:api    # 136 API checks against an in-memory fake database (no Supabase needed)
+npm run test:api    # 137 API checks against an in-memory fake database (no Supabase needed)
 ```
 
 `server/dev/fake-db-server.cts` is development-only test tooling. It fakes the database, auth and the Claude call, and must never be deployed. It does not replace testing against a real Supabase project.
 
 ### Step 1 verification
 
-The bilingual/secure-session step is complete. Verification covers server and mobile TypeScript, server unit tests, the 136-check API harness, i18n parity/interpolation tests, the untranslated-copy audit, and an Expo web export. EN/FR light/dark smoke-test captures are stored in `docs/screenshots/step1/`.
+The bilingual/secure-session step is complete. Verification covers server and mobile TypeScript, server unit tests, the API harness, i18n parity/interpolation tests, the untranslated-copy audit, and an Expo web export. EN/FR light/dark smoke-test captures are stored in `docs/screenshots/step1/`.
+
+## Tutorials and setup guidance
+
+After onboarding, new accounts see a five-card bilingual welcome tour. First-visit tips are stored per user on the device and mirrored to `profiles.preferences.tutorial`, so reinstalling the app does not replay dismissed guidance. Settings includes **Replay tutorial**, which resets the tour and all coach marks. Home also shows setup progress for profile, first goal, first habit, money and PIN. Step 2 EN/FR light/dark captures are stored in `docs/screenshots/step2/`.
 
 ## Run order for Supabase
 
@@ -144,7 +148,7 @@ eas build --profile preview --platform android    # installable APK
 
 GitHub Actions runs `.github/workflows/ci.yml` for every pull request and every push to `main`:
 
-- **Server:** clean install, TypeScript check, unit tests, the 136-check fake-database API suite, and production build.
+- **Server:** clean install, TypeScript check, unit tests, the 137-check fake-database API suite, and production build.
 - **Mobile:** clean install, TypeScript check, i18n tests, untranslated-copy audit, and an Expo web export.
 - CI uses Node.js 20, matching the server's supported runtime.
 

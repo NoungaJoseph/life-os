@@ -104,6 +104,8 @@ check('AI endpoints reject unsupported languages', (await call('POST', '/ai/coac
 console.log('profile / onboarding endpoints');
 check('get profile', (await call('GET', '/profile')).json.data.display_name === 'Joseph');
 check('patch profile', (await call('PATCH', '/profile', { currency: 'USD' })).json.data.currency === 'USD');
+const tutorialPrefs = (await call('PATCH', '/profile', { preferences: { tutorial: { tour_seen: true, seen: { home: true } } } })).json.data.preferences;
+check('tutorial progress syncs through profile preferences', tutorialPrefs.tutorial.tour_seen === true && tutorialPrefs.tutorial.seen.home === true);
 check('areas list has pillars embedded', (await call('GET', '/life-areas')).json.data[0].life_area_pillars.length >= 1);
 check('toggle area', (await call('PUT', `/me/life-areas/${(await call('GET', '/life-areas')).json.data[0].id}`, { is_active: false })).status === 200);
 

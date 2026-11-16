@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
 import { Button, Card, Chip, EmptyState, ErrorState, ErrorText, FadeIn, Field, Header, Hero, Loading, Pill, ProgressBar, Row, Screen, SectionHeader, StatTile, Text, success } from '../src/components/ui';
+import { FirstVisitTip } from '../src/components/Tutorial';
 import { currencyLabel, currentLocale, formatNumber } from '../src/i18n';
 import { api } from '../src/lib/api';
 import { categoryLabel } from '../src/lib/modules';
@@ -61,6 +62,7 @@ export default function Finance() {
 
   return (
     <Screen bottomPad={40} onRefresh={() => void q.refetch()} refreshing={q.isRefetching}>
+      <FirstVisitTip screen="finance" />
       <Header title={t('finance.title')} subtitle={t('finance.subtitle', { month, currency: currencyLabel(s.currency) })} back />
       <Hero>
         <Text size="sm" color="#E9D9A6">{t('finance.leftThisMonth')}</Text>

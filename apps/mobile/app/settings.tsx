@@ -1,13 +1,17 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Platform, Share, Switch, View } from 'react-native';
 import { Button, Card, ErrorText, Field, Header, Loading, Screen, SectionHeader, Text, success } from '../src/components/ui';
+import { FirstVisitTip } from '../src/components/Tutorial';
 import { api } from '../src/lib/api';
 import { errorMessage } from '../src/lib/errors';
 import { enablePush } from '../src/lib/push';
 import { signOutDevice } from '../src/lib/signOut';
+import { useSession } from '../src/lib/session';
+import { resetTutorial } from '../src/lib/tutorial';
+import { Profile } from '../src/lib/types';
 import { spacing } from '../src/theme/tokens';
 import { useTheme } from '../src/theme/useTheme';
 
@@ -17,6 +21,9 @@ export default function Settings() {
   const router = useRouter();
   const t = useTheme();
   const { t: tr } = useTranslation();
+  const qc = useQueryClient();
+  const { session } = useSession();
+  const profile = useQuery({ queryKey: ['profile'], queryFn: () => api<Profile>('/profile') });
   const prefs = useQuery({ queryKey: ['prefs'], queryFn: () => api<Prefs>('/notification-preferences') });
   const [p, setP] = useState<{ quiet_start: string; quiet_end: string; max: string; push: boolean } | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -50,10 +57,17 @@ export default function Settings() {
     if (Platform.OS === 'web') { if (window.confirm(tr('settingsPage.confirmWeb'))) go(); return; }
     Alert.alert(tr('settingsPage.deleteTitle'), tr('settingsPage.confirmBody'), [{ text: tr('common.cancel'), style: 'cancel' }, { text: tr('settingsPage.deleteForever'), style: 'destructive', onPress: go }]);
   };
+  const replay = async () => {
+    if (!session?.user.id || !profile.data) return;
+    try { await resetTutorial(session.user.id, profile.data, qc); router.replace('/tutorial'); } catch (e) { setErr(errorMessage(e, tr)); }
+  };
 
   return (
     <Screen bottomPad={40}>
+      <FirstVisitTip screen="settings" />
       <Header title={tr('settingsPage.title')} subtitle={tr('settingsPage.subtitle')} back />
+      <SectionHeader title={tr('tutorial.replay')} />
+      <Card className="gap-3"><Text size="sm" muted>{tr('tutorial.replayHint')}</Text><Button title={tr('tutorial.replay')} variant="ghost" icon="refresh-outline" onPress={() => void replay()} /></Card>
       <SectionHeader title={tr('settingsPage.notifications')} />
       {!p ? <Loading /> : (
         <Card className="gap-[16px]">
