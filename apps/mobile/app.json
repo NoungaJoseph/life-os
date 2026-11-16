@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "MY LIFE OS",
+    "slug": "my-life-os",
+    "scheme": "mylifeos",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "plugins": ["expo-router", ["expo-notifications", { "color": "#C9A24B" }]],
+    "ios": { "supportsTablet": true, "bundleIdentifier": "com.mylifeos.app" },
+    "android": {
+      "package": "com.mylifeos.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#14213D",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": { "favicon": "./assets/favicon.png" }
+  }
+}

@@ -1,0 +1,21 @@
+:root { --bg:#F7F5F0; --surface:#fff; --text:#14213D; --muted:#5B6577; --border:#E8E3D6; --gold:#C9A24B; --teal:#12A594; --danger:#C0392B; --navy:#14213D; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0E1424; --surface:#172036; --text:#F3F0E8; --muted:#A3ACBF; --border:#27324D; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font-family: Inter, system-ui, sans-serif; line-height:1.5; }
+h1,h2,h3 { font-family: 'Playfair Display', Georgia, serif; margin:0 0 .5rem; }
+.shell { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+nav { display:flex; gap:8px; align-items:center; padding:12px 0 20px; flex-wrap:wrap; }
+nav a, nav button { padding:8px 14px; border-radius:999px; border:1px solid var(--border); background:var(--surface); color:var(--text); text-decoration:none; font:inherit; cursor:pointer; }
+nav a.active { background:var(--navy); color:#fff; border-color:var(--navy); }
+.grid { display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); }
+.card { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:18px; box-shadow:0 6px 24px rgba(20,33,61,.06); }
+.hero { background:linear-gradient(135deg,#14213D,#223E66); color:#fff; border-radius:28px; padding:24px; margin-bottom:16px; }
+.hero small { color:#E9D9A6; }
+.muted { color:var(--muted); font-size:.9rem; }
+.bar { height:8px; background:var(--border); border-radius:4px; overflow:hidden; margin:6px 0; } .bar > i { display:block; height:100%; background:var(--gold); }
+.bar.bad > i { background:var(--danger); }
+.pill { font-size:.75rem; padding:2px 10px; border-radius:999px; background:var(--border); }
+input { width:100%; padding:12px; border-radius:12px; border:1px solid var(--border); background:var(--surface); color:var(--text); font:inherit; margin:6px 0 12px; }
+button.primary { width:100%; padding:12px; border:0; border-radius:14px; background:linear-gradient(135deg,#2DD4BF,#12A594); color:#06302B; font-weight:600; font:inherit; cursor:pointer; }
+.err { color:var(--danger); }
+ul.clean { list-style:none; padding:0; margin:0; } ul.clean li { padding:10px 0; border-bottom:1px solid var(--border); }

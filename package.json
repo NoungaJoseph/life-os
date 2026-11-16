@@ -1,0 +1,13 @@
+{
+  "name": "my-life-os",
+  "private": true,
+  "version": "0.1.0",
+  "description": "MY LIFE OS - Design your life. Execute your goals. Become better.",
+  "workspaces": ["server"],
+  "scripts": {
+    "dev:server": "npm run dev --workspace server",
+    "build:server": "npm run build --workspace server",
+    "typecheck": "npm run typecheck --workspace server",
+    "dev:web": "cd apps/web && npm run dev"
+  }
+}

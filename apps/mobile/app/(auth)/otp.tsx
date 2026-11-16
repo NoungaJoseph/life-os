@@ -1,0 +1,68 @@
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { TextInput, View } from 'react-native';
+import { ErrorText, Header, Press, Screen, Text, success } from '../../src/components/ui';
+import { endOtpFlow, isOtpFlowActive } from '../../src/lib/authFlow';
+import { errorMessage } from '../../src/lib/errors';
+import { supabase } from '../../src/lib/supabase';
+import { useTheme } from '../../src/theme/useTheme';
+
+const RESEND_SECONDS = 30;
+
+export default function Otp() {
+  const { t } = useTranslation();
+  const th = useTheme();
+  const router = useRouter();
+  const { email, resend } = useLocalSearchParams<{ email: string; resend?: string }>();
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [wait, setWait] = useState(RESEND_SECONDS);
+  const returnToRegister = () => { endOtpFlow(); router.replace('/register'); };
+
+  useEffect(() => {
+    if (!isOtpFlowActive(email)) router.replace('/register');
+  }, [email, router]);
+  useEffect(() => { if (wait <= 0) return; const id = setTimeout(() => setWait((w) => w - 1), 1000); return () => clearTimeout(id); }, [wait]);
+  useEffect(() => { if (resend && email) void supabase.auth.resend({ type: 'signup', email }).catch(() => undefined); }, [resend, email]);
+
+  const verify = async (value: string) => {
+    if (busy) return;
+    setBusy(true); setError(null);
+    try {
+      const { error: verifyError } = await supabase.auth.verifyOtp({ email, token: value, type: 'signup' });
+      if (verifyError) throw verifyError;
+      endOtpFlow();
+      success();
+    }
+    catch (e) { setError(errorMessage(e, t)); setCode(''); }
+    finally { setBusy(false); }
+  };
+  const onChange = (v: string) => { const d = v.replace(/\D/g, '').slice(0, 6); setCode(d); if (d.length === 6) void verify(d); };
+  const resendCode = async () => {
+    try {
+      const { error: resendError } = await supabase.auth.resend({ type: 'signup', email });
+      if (resendError) throw resendError;
+      setInfo(t('auth.otp.sent')); setWait(RESEND_SECONDS);
+    } catch (e) { setError(errorMessage(e, t)); }
+  };
+
+  return (
+    <Screen>
+      <Header title={t('auth.otp.title')} subtitle={t('auth.otp.subtitle', { email })} back onBack={returnToRegister} />
+      <View className="my-4 items-center">
+        <TextInput value={code} onChangeText={onChange} keyboardType="number-pad" autoComplete="one-time-code" textContentType="oneTimeCode" maxLength={6} autoFocus
+          accessibilityLabel={t('auth.otp.code')} placeholder="••••••" placeholderTextColor={th.border}
+          className="w-full rounded-lg border-2 border-line bg-surface py-4 text-center font-bold text-[32px] text-ink" style={{ letterSpacing: 10 }} />
+      </View>
+      <ErrorText message={error} />
+      {info ? <Text size="sm" color={th.success} style={{ textAlign: 'center' }}>{info}</Text> : null}
+      <Press onPress={() => void resendCode()} disabled={wait > 0} className="items-center py-2">
+        <Text weight="600" color={wait > 0 ? th.textSecondary : '#12A594'}>{wait > 0 ? t('auth.otp.resendIn', { s: wait }) : t('auth.otp.resend')}</Text>
+      </Press>
+      <Press onPress={returnToRegister} className="items-center py-1"><Text size="sm" muted>{t('auth.otp.wrongEmail')}</Text></Press>
+    </Screen>
+  );
+}
