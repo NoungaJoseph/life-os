@@ -13,7 +13,7 @@ let onRevoked: (() => void) | null = null;
 /** The Gate registers this so a device that was signed out from another phone drops back to the login screen. */
 export const setRevokedHandler = (fn: (() => void) | null) => { onRevoked = fn; };
 
-async function send<T>(path: string, init: { method?: string; body?: unknown }, token?: string): Promise<T> {
+async function send<T>(path: string, init: { method?: string; body?: unknown; headers?: Record<string, string> }, token?: string): Promise<T> {
   const d = await deviceInfo();
   let res: Response;
   try {
@@ -23,6 +23,7 @@ async function send<T>(path: string, init: { method?: string; body?: unknown }, 
         'Content-Type': 'application/json',
         'X-Device-Id': d.id, 'X-Device-Name': d.name, 'X-Platform': d.platform,
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...init.headers,
       },
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
     });
@@ -38,7 +39,7 @@ async function send<T>(path: string, init: { method?: string; body?: unknown }, 
   return json.data as T;
 }
 
-export async function api<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+export async function api<T>(path: string, init: { method?: string; body?: unknown; headers?: Record<string, string> } = {}): Promise<T> {
   const { data } = await supabase.auth.getSession();
   return send<T>(path, init, data.session?.access_token);
 }

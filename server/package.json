@@ -10,7 +10,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --import tsx --test src/**/*.test.ts",
     "test:api": "node dev/run-api-test.mjs",
-    "demo:server": "tsx dev/fake-db-server.cts"
+    "demo:server": "tsx dev/fake-db-server.cts",
+    "reconcile:ledger": "tsx dev/reconcile-ledger.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

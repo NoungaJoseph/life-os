@@ -9,6 +9,10 @@ process.env.AUTH_RATE_LIMIT = '1000';
 process.env.API_RATE_LIMIT = '5000';
 process.env.CORS_ORIGINS = 'http://localhost:8082,http://127.0.0.1:8082,http://localhost:3000';
 process.env.LOG_LEVEL = 'silent';
+process.env.PAYMENTS_MODE = 'sandbox';
+process.env.PAYMENTS_WEBHOOK_SECRET = 'fake-webhook-secret-for-tests';
+process.env.SANDBOX_PAYMENT_DELAY_MS = '0';
+process.env.SANDBOX_PAYMENT_SUCCESS_RATE = '1';
 process.env.PORT = process.env.PORT || '4000';
 
 const crypto = require('node:crypto');
@@ -40,6 +44,10 @@ db.life_area_pillars = areaDefs.flatMap(([slug, , ps]) => ps.map((p) => ({ life_
 db.user_life_areas = areas.map((a) => ({ user_id: U, life_area_id: a.id, is_active: true, settings: {} }));
 db.profiles = [{ id: U, display_name: 'Joseph', first_name: 'Joseph', last_name: 'Youmi', phone: '+237671063170', timezone: TZ, currency: 'XAF', language: 'en', preferences: {}, onboarding_completed: true }];
 db.life_visions = [{ id: uid(), user_id: U, identity_statement: 'A disciplined builder', ideal_life: '', long_term_ambitions: '', pillar_priorities: {} }];
+const walletId=uid(), walletAccountId=uid(), clearingId=uid();
+db.wallets=[{id:walletId,user_id:U,currency:'XAF',status:'active',daily_limit:500000,created_at:new Date().toISOString()}];
+db.ledger_accounts=[{id:walletAccountId,user_id:U,wallet_id:walletId,code:'wallet',kind:'wallet',currency:'XAF',balance:0,locked:false},{id:clearingId,user_id:null,wallet_id:null,code:'provider:sandbox',kind:'provider_clearing',currency:'XAF',balance:0,locked:false}];
+db.transactions=[];db.ledger_entries=[];db.payment_requests=[];db.payment_webhook_events=[];db.vault_settings=[];db.money_audit_log=[];
 
 const wd = (d: string) => dates.weekday(d);
 const mkHabit = (o: any) => ({ id: uid(), user_id: U, goal_id: null, description: null, frequency: 'daily', days_of_week: null, target_per_period: 1,
@@ -116,6 +124,9 @@ const DEFAULTS: Record<string, () => any> = {
   debts: () => ({ status: 'active', direction: 'owed_by_me', currency: 'XAF' }),
   goal_milestones: () => ({ due_date: null, completed_at: null, sort_order: 0 }),
   journal_entries: () => ({ entry_date: today, mood: null, title: null, ai_reflection: null, life_area_id: null }),
+  ledger_accounts: () => ({ balance: 0, locked: false, metadata: {} }),
+  payment_requests: () => ({ status: 'pending', provider_reference: null, transaction_id: null, failure_code: null, metadata: {} }),
+  vault_settings: () => ({ emergency_share: 20, lock_accepted_at: null }),
 };
 class Q {
   op = 'select'; payload: any; filters: ((r: any) => boolean)[] = []; mode: 'many' | 'single' | 'maybe' = 'many';
@@ -128,6 +139,7 @@ class Q {
   upsert(p: any, o?: any) { this.op = 'upsert'; this.payload = p; this.onConflict = o?.onConflict?.split(',') ?? null; return this; }
   delete() { this.op = 'delete'; return this; }
   eq(k: string, v: any) { this.filters.push((r) => r[k] === v); return this; }
+  neq(k: string, v: any) { this.filters.push((r) => r[k] !== v); return this; }
   is(k: string, v: any) { this.filters.push((r) => (v === null ? r[k] == null : r[k] === v)); return this; }
   gte(k: string, v: any) { this.filters.push((r) => r[k] != null && r[k] >= v); return this; }
   lte(k: string, v: any) { this.filters.push((r) => r[k] != null && r[k] <= v); return this; }
@@ -234,7 +246,17 @@ const fakeAnon = { auth: {
 } };
 const fakeAdmin = {
   from: (t: string) => new Q(t),
-  rpc: async (name: string, args: any) => { killedAuthSessions.push(`${name}:${args.p_session ?? 'others-keep-' + args.p_keep}`); return { data: null, error: null }; },
+  rpc: async (name: string, args: any) => {
+    if(name==='ensure_wallet')return{data:db.wallets.find((w)=>w.user_id===args.p_user),error:null};
+    if(name==='post_ledger_transaction'){
+      const existing=db.transactions.find((t)=>t.user_id===args.p_user&&t.idempotency_key===args.p_idempotency_key);if(existing)return{data:existing,error:null};
+      const total=args.p_entries.reduce((n:number,e:any)=>n+e.amount,0);if(total!==0)return{data:null,error:{message:'Transaction entries must balance'}};
+      for(const e of args.p_entries){const a=db.ledger_accounts.find((x)=>x.id===e.account_id);if(!a)return{data:null,error:{message:'Ledger account missing'}};if(a.kind==='wallet'&&a.balance+e.amount<0)return{data:null,error:{message:'Insufficient wallet balance'}};}
+      const tx={id:uid(),user_id:args.p_user,wallet_id:walletId,idempotency_key:args.p_idempotency_key,kind:args.p_kind,status:'succeeded',amount:args.p_amount,currency:'XAF',metadata:args.p_metadata??{},created_at:new Date().toISOString()};db.transactions.push(tx);
+      for(const e of args.p_entries){const a=db.ledger_accounts.find((x)=>x.id===e.account_id);a.balance+=e.amount;db.ledger_entries.push({id:uid(),transaction_id:tx.id,account_id:e.account_id,amount:e.amount,created_at:new Date().toISOString()});}return{data:tx,error:null};
+    }
+    killedAuthSessions.push(`${name}:${args.p_session ?? 'others-keep-' + args.p_keep}`); return { data: null, error: null };
+  },
   auth: { admin: {
     deleteUser: async (id: string) => { deletedUsers.push(id); return { error: null }; },
     getUserById: async (id: string) => { const u = [...users.values()].find((x) => x.id === id); return { data: { user: u ? { id, email: u.email } : null }, error: null }; },

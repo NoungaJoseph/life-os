@@ -8,14 +8,15 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { authRouter } from './routes/auth.routes';
 import { v1Router } from './routes/v1.routes';
 import { logger } from './utils/logger';
+import { paymentWebhookRouter } from './routes/payment-webhook.routes';
 
 export function createApp() {
   const app = express();
 
   app.set('trust proxy', 1);
   app.use(helmet());
-  app.use(cors({ origin: env.corsOrigins, credentials: true, allowedHeaders: ['Content-Type', 'Authorization', 'X-Device-Id', 'X-Device-Name', 'X-Platform'] }));
-  app.use(express.json({ limit: '1mb' }));
+  app.use(cors({ origin: env.corsOrigins, credentials: true, allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Payment-Signature', 'X-Device-Id', 'X-Device-Name', 'X-Platform'] }));
+  app.use(express.json({ limit: '1mb', verify: (req, _res, buf) => { (req as any).rawBody = buf.toString('utf8'); } }));
   app.use(
     pinoHttp({
       logger,
@@ -31,6 +32,7 @@ export function createApp() {
   });
 
   app.use('/api/v1/public/auth', authRouter);
+  app.use('/webhooks/payments', paymentWebhookRouter);
 
   app.use(
     '/api/v1',

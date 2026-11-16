@@ -51,6 +51,17 @@ const base = {
     },
     checklist: { title: 'Complete your setup', body: '{{done}} of {{total}} ready', profile: 'Complete your profile', goal: 'Create your first goal', habit: 'Add your first habit', money: 'Add money', pin: 'Protect the app with a PIN' },
   },
+  wallet: {
+    profileButton: 'Wallet', title: 'Wallet', subtitle: 'Your money, recorded clearly', balance: 'Wallet balance', hideBalance: 'Hide balance', showBalance: 'Show balance',
+    add: 'Add money', withdraw: 'Withdraw', vault: 'Send to Vault', groups: 'Groups', recent: 'Recent transactions', all: 'All', empty: 'No wallet transactions yet.',
+    amount: 'Amount in FCFA', phone: 'Mobile Money number', provider: 'Operator', sandbox: 'Sandbox', mtn: 'MTN MoMo', orange: 'Orange Money', suggested: '{{provider}} looks right for this number. You can change it.',
+    submitDeposit: 'Request deposit', submitWithdrawal: 'Request withdrawal', invalidAmount: 'Enter a whole amount above zero.', success: 'Request created.',
+    status: { pending: 'Pending', processing: 'Processing', succeeded: 'Successful', failed: 'Failed', reversed: 'Reversed' },
+    kind: { deposit: 'Deposit', withdrawal: 'Withdrawal', vault_transfer: 'Vault transfer', vault_release: 'Vault release', group_contribution: 'Group contribution', group_release: 'Group release', reversal: 'Reversal', adjustment: 'Adjustment' },
+  },
+  vault: {
+    title: 'Goal Vault', subtitle: 'Locked savings for what matters', howTitle: 'How the Vault works', howBody: 'Money you send to the Vault is split across your goals and locked. You cannot withdraw it early. Each goal releases automatically to your wallet only when its target is reached.', acknowledge: 'I understand that this money stays locked until the goal is reached.', accept: 'I understand, continue', locked: 'Total locked', nextUnlock: 'Next unlock: {{title}} needs {{amount}} more', goals: 'Vault goals', addGoal: 'Add a goal to the Vault', target: 'Target amount', priority: 'Priority from 1 to 5', emergency: 'Emergency fund', sampleRent: 'Rent reserve', enable: 'Use this goal', deposit: 'Send money to Vault', amount: 'Amount in FCFA', preview: 'Preview split', confirm: 'Confirm locked deposit', split: '{{amount}} to {{title}}', noGoals: 'Create a regular goal first, then return here.', loadError: 'Could not load your Vault.', exact: 'The full {{amount}} FCFA will be allocated exactly.',
+  },
   sessions: {
     title: 'Devices and sessions', subtitle: 'See where you are signed in.', thisDevice: 'This device', lastActive: 'Last active {{when}}', signOut: 'Sign out', signOutOthers: 'Sign out all other devices',
     confirmOthers: 'Sign out every device except this one?', lock: 'Lock the app', lockAfter: 'Lock after', lockNow: 'Immediately', lock1: '1 minute', lock5: '5 minutes', empty: 'No other devices.',

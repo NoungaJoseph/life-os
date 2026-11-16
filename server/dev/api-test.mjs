@@ -188,6 +188,30 @@ check('bad push token rejected', (await call('PUT', '/push-tokens', { token: 'ab
 check('register push token', (await call('PUT', '/push-tokens', { token: 'ExponentPushToken[abc123_-x]', platform: 'android' })).status === 200);
 check('re-register is idempotent', (await call('PUT', '/push-tokens', { token: 'ExponentPushToken[abc123_-x]', platform: 'android' })).status === 200);
 
+console.log('wallet ledger and sandbox payments');
+check('wallet starts at zero', (await call('GET', '/wallet')).json.data.balance === 0);
+check('money endpoint requires idempotency key', (await call('POST', '/wallet/deposits', { amount: 10000, phone: '671234567', provider: 'sandbox' })).status === 400);
+const depositKey = { 'Idempotency-Key': 'deposit-test-0001' };
+const deposit = await call('POST', '/wallet/deposits', { amount: 10000, phone: '671234567', provider: 'sandbox' }, true, depositKey);
+check('sandbox deposit credits wallet', deposit.status === 201 && (await call('GET', '/wallet')).json.data.balance === 10000, JSON.stringify(deposit.json));
+await call('POST', '/wallet/deposits', { amount: 10000, phone: '671234567', provider: 'sandbox' }, true, depositKey);
+check('deposit retry is idempotent', (await call('GET', '/wallet')).json.data.balance === 10000);
+const withdrawal = await call('POST', '/wallet/withdrawals', { amount: 3000, phone: '671234567', provider: 'sandbox' }, true, { 'Idempotency-Key': 'withdraw-test-0001' });
+check('withdrawal hold and settlement debit once', withdrawal.status === 201 && (await call('GET', '/wallet')).json.data.balance === 7000, JSON.stringify(withdrawal.json));
+check('negative wallet is blocked', (await call('POST', '/wallet/withdrawals', { amount: 8000, phone: '671234567', provider: 'sandbox' }, true, { 'Idempotency-Key': 'withdraw-test-0002' })).status === 409);
+const history = await call('GET', '/wallet/transactions');
+check('transaction history contains balanced money movements', history.status === 200 && history.json.data.some((x) => x.kind === 'deposit') && history.json.data.some((x) => x.kind === 'withdrawal'));
+const vaultBefore = await call('GET', '/vault');
+check('Vault requires lock consent', vaultBefore.status === 200 && vaultBefore.json.data.accepted === false && (await call('POST', '/vault/preview', { amount: 2000 })).status === 409);
+check('accept Vault lock explanation', (await call('PUT', '/vault/consent', {})).status === 200);
+check('configure a locked Vault goal', (await call('PUT', `/vault/goals/${save.id}`, { enabled: true, emergency: true, priority: 5, target: 10000 })).status === 200);
+const preview = await call('POST', '/vault/preview', { amount: 2000 });
+check('Vault preview allocates every franc exactly', preview.status === 200 && preview.json.data.parts.reduce((n, p) => n + p.amount, 0) === 2000, JSON.stringify(preview.json));
+const vaultDeposit = await call('POST', '/vault/deposits', { amount: 2000 }, true, { 'Idempotency-Key': 'vault-test-0001' });
+const vaultAfter = await call('GET', '/vault');
+const walletAfterVault = await call('GET', '/wallet');
+check('Vault deposit debits wallet and locks allocation', vaultDeposit.status === 201 && walletAfterVault.json.data.balance === 5000 && vaultAfter.json.data.total_locked === 2000, `status=${vaultDeposit.status} wallet=${walletAfterVault.json.data.balance} locked=${vaultAfter.json.data.total_locked}`);
+
 console.log('registration, OTP, login');
 const P = '/public/auth';
 const reg = { first_name: 'Amina', last_name: 'Ngu', email: 'amina@example.com', phone: '6 77 12 34 56', password: 'Secret123' };

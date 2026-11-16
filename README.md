@@ -105,7 +105,7 @@ The AI coach, goal breakdown and journal reflections call the Claude API. Set `A
 ```
 cd server
 npm test            # unit tests: insights engine, AI output parsing
-npm run test:api    # 137 API checks against an in-memory fake database (no Supabase needed)
+npm run test:api    # 149 API checks against an in-memory fake database (no Supabase needed)
 ```
 
 `server/dev/fake-db-server.cts` is development-only test tooling. It fakes the database, auth and the Claude call, and must never be deployed. It does not replace testing against a real Supabase project.
@@ -118,9 +118,19 @@ The bilingual/secure-session step is complete. Verification covers server and mo
 
 After onboarding, new accounts see a five-card bilingual welcome tour. First-visit tips are stored per user on the device and mirrored to `profiles.preferences.tutorial`, so reinstalling the app does not replay dismissed guidance. Settings includes **Replay tutorial**, which resets the tour and all coach marks. Home also shows setup progress for profile, first goal, first habit, money and PIN. Step 2 EN/FR light/dark captures are stored in `docs/screenshots/step2/`.
 
+## Wallet, payments and Goal Vault
+
+Apply `supabase/migrations/20261116000001_wallet_ledger.sql` after the earlier migrations. Wallet money uses whole XAF integers and an append-only double-entry ledger. Cached account balances update in the same database transaction; deferred balance enforcement rejects unbalanced transactions, wallet accounts cannot become negative, and every write requires a per-user `Idempotency-Key`. Run `npm run reconcile:ledger` in `server/` to compare cached balances with entry sums.
+
+Payment integrations use the `PaymentProvider` interface. `PAYMENTS_MODE=sandbox` runs the included simulator; configure its delay/success rate with `SANDBOX_PAYMENT_DELAY_MS` and `SANDBOX_PAYMENT_SUCCESS_RATE`. Set a strong `PAYMENTS_WEBHOOK_SECRET`; callbacks go to `POST /webhooks/payments/:provider` with an HMAC-SHA256 value in `X-Payment-Signature`. To connect real providers, replace the request/status methods in `MtnProvider` and `OrangeProvider`, then add `MTN_MOMO_API_KEY` and `ORANGE_MONEY_API_KEY` only to the server environment. Never place provider secrets in Expo variables.
+
+The Goal Vault requires a bilingual lock explanation and explicit consent before the first deposit. It reserves the configured emergency share, uses priority weights and largest-remainder integer rounding, caps goals at their remaining need, and automatically releases a goal to the wallet when its target is reached. Early release has no user UI and can only be completed through the verified support/admin endpoint.
+
+Step 3 wallet, Vault, and consent screens were smoke-tested in English and French, light and dark themes. Captures are stored in `docs/screenshots/step3/`.
+
 ## Run order for Supabase
 
-SQL editor: run `20261102000001_core_schema.sql`, `20261103000001_journal.sql`, `20261104000001_life_modules.sql`, `20261105000001_debts_push.sql`, then `seed.sql`. Fill `server/.env` from `.env.example`.
+SQL editor: run migrations in filename order through `20261116000001_wallet_ledger.sql`, then run `seed.sql`. Fill `server/.env` from `.env.example`.
 
 ## Web app
 
@@ -148,7 +158,7 @@ eas build --profile preview --platform android    # installable APK
 
 GitHub Actions runs `.github/workflows/ci.yml` for every pull request and every push to `main`:
 
-- **Server:** clean install, TypeScript check, unit tests, the 137-check fake-database API suite, and production build.
+- **Server:** clean install, TypeScript check, unit tests, the 149-check fake-database API suite, and production build.
 - **Mobile:** clean install, TypeScript check, i18n tests, untranslated-copy audit, and an Expo web export.
 - CI uses Node.js 20, matching the server's supported runtime.
 

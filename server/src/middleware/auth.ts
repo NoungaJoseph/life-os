@@ -23,6 +23,7 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
     req.accessToken = token;
     req.sessionId = sessionIdFromJwt(token);
     req.db = createUserClient(token);
+    req.isAdmin = data.user.app_metadata?.role === 'admin' || data.user.app_metadata?.role === 'support';
     next();
   } catch (err) {
     next(err);

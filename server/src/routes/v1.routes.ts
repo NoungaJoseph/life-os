@@ -21,12 +21,14 @@ import {
 import { plannerRouter } from './planner.routes';
 import { smartRouter } from './smart.routes';
 import { modulesRouter } from './modules.routes';
+import { walletRouter } from './wallet.routes';
 
 export const v1Router = Router();
 
 v1Router.use(requireAuth);
 v1Router.use(deviceSession);
 v1Router.use(securityRouter);
+v1Router.use(walletRouter);
 
 // Profile
 v1Router.get('/profile', asyncHandler(async (req, res) => {

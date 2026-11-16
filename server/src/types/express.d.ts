@@ -10,6 +10,8 @@ declare global {
       sessionId?: string;
       /** Supabase client scoped to the user, so RLS is enforced. */
       db?: SupabaseClient;
+      /** Trusted Supabase app_metadata role, used only for support/admin operations. */
+      isAdmin?: boolean;
     }
   }
 }

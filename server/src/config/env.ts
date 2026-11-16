@@ -13,6 +13,16 @@ const schema = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   ENABLE_SCHEDULER: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
   AI_MODEL: z.string().default('claude-sonnet-5-5'),
+  PAYMENTS_MODE: z.enum(['sandbox', 'live']).default('sandbox'),
+  PAYMENTS_WEBHOOK_SECRET: z.string().min(16).default('development-only-change-me'),
+  SANDBOX_PAYMENT_DELAY_MS: z.coerce.number().int().min(0).max(60000).default(800),
+  SANDBOX_PAYMENT_SUCCESS_RATE: z.coerce.number().min(0).max(1).default(1),
+  MTN_MOMO_API_KEY: z.string().optional(),
+  ORANGE_MONEY_API_KEY: z.string().optional(),
+}).superRefine((value, ctx) => {
+  if (value.NODE_ENV === 'production' && value.PAYMENTS_WEBHOOK_SECRET === 'development-only-change-me') {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['PAYMENTS_WEBHOOK_SECRET'], message: 'Set a strong production webhook secret' });
+  }
 });
 
 const parsed = schema.safeParse(process.env);

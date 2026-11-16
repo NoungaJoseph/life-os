@@ -12,6 +12,13 @@ export const uuidParam = z.object({ id: uuid });
 export const habitDayParams = z.object({ id: uuid, date: isoDate });
 export const milestoneParams = z.object({ id: uuid, milestoneId: uuid });
 export const dateQuery = z.object({ date: isoDate.optional() });
+export const paymentRequestSchema = z.object({
+  amount: z.number().int().positive().max(10_000_000), phone: z.string().trim().min(9).max(20),
+  provider: z.enum(['sandbox','mtn','orange']),
+}).strict();
+export const transactionListQuery = z.object({ status: z.enum(['pending','succeeded','failed','reversed']).optional(), kind: z.enum(['deposit','withdrawal','vault_transfer','vault_release','group_contribution','group_release','reversal','adjustment']).optional(), page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(30) });
+export const vaultGoalSchema = z.object({ enabled: z.boolean(), emergency: z.boolean().default(false), priority: z.number().int().min(1).max(5), target: z.number().int().positive().max(100_000_000) }).strict();
+export const vaultAmountSchema = z.object({ amount: z.number().int().positive().max(10_000_000) }).strict();
 
 // ---- profile / vision / areas
 export const updateProfileSchema = z.object({

@@ -56,6 +56,17 @@ const base: Deep<BaseCatalog> = {
     },
     checklist: { title: 'Terminez la configuration', body: '{{done}} sur {{total}} prêts', profile: 'Compléter votre profil', goal: 'Créer votre premier objectif', habit: 'Ajouter votre première habitude', money: 'Ajouter de l’argent', pin: "Protéger l'application avec un code PIN" },
   },
+  wallet: {
+    profileButton: 'Portefeuille', title: 'Portefeuille', subtitle: 'Votre argent, enregistré clairement', balance: 'Solde du portefeuille', hideBalance: 'Masquer le solde', showBalance: 'Afficher le solde',
+    add: 'Ajouter de l’argent', withdraw: 'Retirer', vault: 'Vers le Coffre', groups: 'Groupes', recent: 'Transactions récentes', all: 'Toutes', empty: 'Aucune transaction pour le moment.',
+    amount: 'Montant en FCFA', phone: 'Numéro Mobile Money', provider: 'Opérateur', sandbox: 'Bac à sable', mtn: 'MTN MoMo', orange: 'Orange Money', suggested: '{{provider}} semble correspondre à ce numéro. Vous pouvez le changer.',
+    submitDeposit: 'Demander le versement', submitWithdrawal: 'Demander le retrait', invalidAmount: 'Saisissez un montant entier supérieur à zéro.', success: 'Demande créée.',
+    status: { pending: 'En attente', processing: 'En cours', succeeded: 'Réussie', failed: 'Échouée', reversed: 'Annulée' },
+    kind: { deposit: 'Versement', withdrawal: 'Retrait', vault_transfer: 'Versement au Coffre', vault_release: 'Déblocage du Coffre', group_contribution: 'Contribution au groupe', group_release: 'Déblocage du groupe', reversal: 'Annulation', adjustment: 'Ajustement' },
+  },
+  vault: {
+    title: 'Coffre à objectifs', subtitle: 'Une épargne bloquée pour ce qui compte', howTitle: 'Comment fonctionne le Coffre', howBody: "L'argent envoyé au Coffre est réparti entre vos objectifs et reste bloqué. Vous ne pouvez pas le retirer plus tôt. Chaque objectif est reversé automatiquement dans votre portefeuille uniquement lorsque sa cible est atteinte.", acknowledge: "Je comprends que cet argent reste bloqué jusqu'à ce que l'objectif soit atteint.", accept: 'Je comprends, continuer', locked: 'Total bloqué', nextUnlock: 'Prochain déblocage : il manque {{amount}} à {{title}}', goals: 'Objectifs du Coffre', addGoal: 'Ajouter un objectif au Coffre', target: 'Montant cible', priority: 'Priorité de 1 à 5', emergency: "Fonds d'urgence", sampleRent: 'Réserve de loyer', enable: 'Utiliser cet objectif', deposit: 'Verser dans le Coffre', amount: 'Montant en FCFA', preview: 'Voir la répartition', confirm: 'Confirmer le versement bloqué', split: '{{amount}} pour {{title}}', noGoals: "Créez d'abord un objectif classique, puis revenez ici.", loadError: 'Impossible de charger votre Coffre.', exact: 'La totalité des {{amount}} FCFA sera répartie exactement.',
+  },
   sessions: {
     title: 'Appareils et sessions', subtitle: 'Voyez où vous êtes connecté.', thisDevice: 'Cet appareil', lastActive: 'Dernière activité {{when}}', signOut: 'Déconnecter', signOutOthers: 'Déconnecter tous les autres appareils',
     confirmOthers: 'Déconnecter tous les appareils sauf celui-ci ?', lock: "Verrouiller l'application", lockAfter: 'Verrouiller après', lockNow: 'Immédiatement', lock1: '1 minute', lock5: '5 minutes', empty: 'Aucun autre appareil.',

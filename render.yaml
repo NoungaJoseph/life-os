@@ -22,3 +22,11 @@ services:
         sync: false   # include your web app origin, e.g. https://my-life-os-web.vercel.app
       - key: ENABLE_SCHEDULER
         value: 'true'  # sends reminder push notifications; the free plan sleeps when idle, so use a paid plan for on-time reminders
+      - key: PAYMENTS_MODE
+        value: sandbox
+      - key: PAYMENTS_WEBHOOK_SECRET
+        sync: false
+      - key: MTN_MOMO_API_KEY
+        sync: false
+      - key: ORANGE_MONEY_API_KEY
+        sync: false
