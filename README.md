@@ -9,7 +9,7 @@ A personal life operating system: Life Vision → 5 Pillars → 10 Life Areas �
 | Phase | Scope | State |
 |---|---|---|
 | 1 | Foundation: monorepo, Express API, Supabase schema + RLS + seed, Render config, design tokens | Done |
-| 2 | Auth and onboarding (mobile) | Done. Web app not started |
+| 2 | Auth and onboarding (mobile) | Done |
 | 3–4 | Goals, tasks, habits, dashboard, smart insights, AI coach, journal, weekly and monthly reviews (mobile) | Done |
 | 5 | Finance, projects, food, fitness, reading, social, relationships, reminders (API + mobile) | Done, tested against a fake DB only |
 | 6 | Debts, push reminders, offline reading, EAS config, web companion | Done (see notes) |
@@ -27,7 +27,7 @@ packages/design-tokens/    Shared colours, spacing, radii, type sizes
 render.yaml                Render deployment blueprint
 ```
 
-Mobile app: `apps/mobile` (Expo SDK 58, Expo Router, TanStack Query, React Hook Form + Zod). The Next.js web app is not started yet.
+Mobile app: `apps/mobile` (Expo SDK 58, Expo Router, TanStack Query, React Hook Form + Zod). The Next.js companion lives in `apps/web`.
 
 ## Setup
 
@@ -109,6 +109,10 @@ npm run test:api    # 136 API checks against an in-memory fake database (no Supa
 ```
 
 `server/dev/fake-db-server.cts` is development-only test tooling. It fakes the database, auth and the Claude call, and must never be deployed. It does not replace testing against a real Supabase project.
+
+### Step 1 verification
+
+The bilingual/secure-session step is complete. Verification covers server and mobile TypeScript, server unit tests, the 136-check API harness, i18n parity/interpolation tests, the untranslated-copy audit, and an Expo web export. EN/FR light/dark smoke-test captures are stored in `docs/screenshots/step1/`.
 
 ## Run order for Supabase
 

@@ -23,16 +23,19 @@ export function Screen({ children, scroll = true, onRefresh, refreshing = false,
   const t = useTheme();
   const body = scroll ? (
     <ScrollView
-      contentContainerClassName="grow gap-4 p-6"
-      contentContainerStyle={{ paddingBottom: spacing.xxl + bottomPad }}
+      contentContainerClassName="grow"
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
       refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.primary} /> : undefined}
-    >{children}</ScrollView>
+    >
+      <View className="grow gap-4" style={{ marginHorizontal: spacing.lg, paddingBottom: spacing.xxl + bottomPad, paddingTop: spacing.lg }}>{children}</View>
+    </ScrollView>
   ) : <View className="grow gap-4 p-6">{children}</View>;
   return (
-    <SafeAreaView className="flex-1 bg-bg" edges={['top', 'left', 'right']}>
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>{body}</KeyboardAvoidingView>
+    <SafeAreaView className="flex-1 bg-bg" edges={['top', 'left', 'right']}
+      style={Platform.OS === 'web' ? { maxWidth: '100%', minWidth: 0, width: '100%' } : undefined}>
+      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={Platform.OS === 'web' ? { maxWidth: '100%', minWidth: 0, width: '100%' } : undefined}>{body}</KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -114,7 +117,14 @@ export function Press({ children, onPress, style, disabled, label, className }: 
 
 export function FadeIn({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   const v = useRef(new Animated.Value(0)).current;
-  useEffect(() => { Animated.timing(v, { toValue: 1, duration: 380, delay, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start(); }, [v, delay]);
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    Animated.timing(v, { toValue: 1, duration: 380, delay, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  }, [v, delay]);
+  // React Native's Animated timing can remain at opacity 0 in static web exports
+  // and headless browsers. Keep motion on native while ensuring web content is
+  // immediately visible and accessible.
+  if (Platform.OS === 'web') return <View>{children}</View>;
   return (
     <Animated.View style={{ opacity: v, transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }}>{children}</Animated.View>
   );

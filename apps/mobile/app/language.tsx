@@ -25,14 +25,14 @@ export default function LanguageScreen() {
 
   return (
     <Screen>
-      <View className="items-center gap-2 pt-10">
+      <View className="items-center gap-2 pt-10" style={{ width: '100%' }}>
         <FadeIn>
           <LinearGradient colors={['#14213D', '#223E66']} className="h-24 w-24 items-center justify-center rounded-full" style={{ borderRadius: 48 }}>
             <Ionicons name="language" size={44} color="#E9D9A6" />
           </LinearGradient>
         </FadeIn>
-        <Text size="xl" serif weight="700" style={{ textAlign: 'center' }}>{t('language.title')}</Text>
-        <Text muted size="sm" style={{ textAlign: 'center' }}>{t('language.subtitle')}</Text>
+        <Text size="xl" serif weight="700" style={{ maxWidth: '100%', textAlign: 'center' }}>{t('language.title')}</Text>
+        <Text muted size="sm" style={{ alignSelf: 'stretch', flexShrink: 1, paddingHorizontal: 8, textAlign: 'center' }}>{t('language.subtitle')}</Text>
       </View>
       <View className="mt-4 gap-3">
         {OPTIONS.map((o, i) => {
