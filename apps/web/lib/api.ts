@@ -18,3 +18,12 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
   if (!res.ok || !json?.success) throw new ApiError(res.status, json?.error?.message ?? 'Request failed');
   return json.data as T;
 }
+
+export type AuthSession = { access_token: string; refresh_token: string; user: { id: string; email: string | null } };
+
+export const publicApi = <T>(path: string, body: unknown) => api<T>(`/public/auth${path}`, { method: 'POST', body });
+
+export async function adoptSession(s: AuthSession) {
+  const { error } = await supabase.auth.setSession({ access_token: s.access_token, refresh_token: s.refresh_token });
+  if (error) throw new ApiError(401, error.message);
+}

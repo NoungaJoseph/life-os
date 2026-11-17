@@ -22,7 +22,7 @@ authRouter.post('/register', validate(registerSchema), asyncHandler(async (req, 
   const taken = await adminClient.from('profiles').select('id').eq('phone', phone).maybeSingle();
   if (taken.error) throw new AppError(500, 'DB_ERROR', 'Database error');
   if (taken.data) throw new AppError(409, 'PHONE_IN_USE', 'This phone number is already used.');
-  const { error } = await anonClient.auth.signUp({ email, password, options: { data: { first_name, last_name, phone, display_name: first_name } } });
+  const { data, error } = await anonClient.auth.signUp({ email, password, options: { data: { first_name, last_name, phone, display_name: first_name } } });
   if (error) {
     if (error.status === 429) throw new AppError(429, 'TOO_MANY_REQUESTS', 'Too many tries. Please wait a moment.');
     if (/database error/i.test(error.message)) throw new AppError(409, 'PHONE_IN_USE', 'This phone number is already used.');
@@ -30,11 +30,14 @@ authRouter.post('/register', validate(registerSchema), asyncHandler(async (req, 
     throw new AppError(400, 'REGISTER_FAILED', 'Could not create the account.');
   }
   // Same answer whether or not the email already had an account, so this cannot be used to probe for accounts.
-  created(res, { next: 'verify_otp', email });
+  created(res, { next: 'verify_otp', email, ...(data?.session && data?.user ? { session: sessionPayload(data.session, data.user) } : {}) });
 }));
 
 authRouter.post('/verify-otp', validate(verifyOtpSchema), asyncHandler(async (req, res) => {
-  const { data, error } = await anonClient.auth.verifyOtp({ email: req.body.email, token: req.body.token, type: 'email' });
+  let { data, error } = await anonClient.auth.verifyOtp({ email: req.body.email, token: req.body.token, type: 'email' });
+  if (error || !data.session || !data.user) {
+    ({ data, error } = await anonClient.auth.verifyOtp({ email: req.body.email, token: req.body.token, type: 'signup' }));
+  }
   if (error || !data.session || !data.user) throw new AppError(400, 'BAD_OTP', 'This code is wrong or has expired.');
   ok(res, sessionPayload(data.session, data.user));
 }));

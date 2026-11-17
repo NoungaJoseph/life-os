@@ -6,9 +6,10 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { z } from 'zod';
 import { Button, ErrorText, Field, Header, Press, Screen, Text } from '../../src/components/ui';
+import { adoptSession, AuthSession, publicApi } from '../../src/lib/api';
 import { beginOtpFlow } from '../../src/lib/authFlow';
 import { errorMessage } from '../../src/lib/errors';
-import { supabase } from '../../src/lib/supabase';
+import { hasLocalPin } from '../../src/lib/pin';
 
 export default function Register() {
   const { t } = useTranslation();
@@ -32,18 +33,20 @@ export default function Register() {
     setError(null);
     try {
       const email = body.email.trim().toLowerCase();
-      const { data, error: signUpError } = await supabase.auth.signUp({
+      const res = await publicApi<{ next: string; email: string; session?: AuthSession }>('/register', {
+        first_name: body.first_name.trim(),
+        last_name: body.last_name.trim(),
         email,
+        phone: body.phone.trim(),
         password: body.password,
-        options: { data: { first_name: body.first_name.trim(), last_name: body.last_name.trim(), phone: body.phone.trim(), display_name: body.first_name.trim() } },
       });
-      if (signUpError) throw signUpError;
-      // With email confirmation enabled Supabase sends the OTP and returns no
-      // session. If confirmation is disabled, the user is signed in immediately.
-      if (!data.session) {
-        beginOtpFlow(email);
-        router.push({ pathname: '/otp', params: { email } });
+      if (res.session) {
+        await adoptSession(res.session);
+        router.replace((await hasLocalPin(res.session.user.id)) ? '/unlock' : '/create-pin');
+        return;
       }
+      beginOtpFlow(res.email || email);
+      router.push({ pathname: '/otp', params: { email: res.email || email } });
     } catch (e) { setError(errorMessage(e, t)); }
   });
 

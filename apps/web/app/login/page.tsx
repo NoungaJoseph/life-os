@@ -1,6 +1,7 @@
 'use client';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
+import { adoptSession, AuthSession, publicApi } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 
 export default function Login() {
@@ -14,11 +15,22 @@ export default function Login() {
 
   async function submit(e: FormEvent) {
     e.preventDefault(); setBusy(true); setError(null); setInfo(null);
-    const { data, error } = mode === 'in' ? await supabase.auth.signInWithPassword({ email, password }) : await supabase.auth.signUp({ email, password });
-    setBusy(false);
-    if (error) return setError(error.message);
-    if (mode === 'up' && !data.session) return setInfo('Check your email to confirm your account, then sign in.');
-    router.replace('/');
+    try {
+      if (mode === 'in') {
+        const session = await publicApi<AuthSession>('/login', { identifier: email.trim(), password });
+        await adoptSession(session);
+        router.replace('/');
+        return;
+      }
+      const { data, error: signUpError } = await supabase.auth.signUp({ email: email.trim().toLowerCase(), password });
+      if (signUpError) return setError(signUpError.message);
+      if (!data.session) return setInfo('Check your email to confirm your account, then sign in.');
+      router.replace('/');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sign in failed.');
+    } finally {
+      setBusy(false);
+    }
   }
   return (
     <main style={{ maxWidth: 400, margin: '10vh auto' }}>

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { PinPad } from '../src/components/PinPad';
 import { ErrorText, FadeIn, Screen, Text, success } from '../src/components/ui';
+import { api } from '../src/lib/api';
 import { useLock } from '../src/lib/lock';
 import { isWeakPin, setLocalPin } from '../src/lib/pin';
 import { useSession } from '../src/lib/session';
@@ -32,6 +33,7 @@ export default function CreatePin() {
     setBusy(true);
     try {
       await setLocalPin(session!.user.id, pin);
+      void api('/security/pin', { method: 'PUT', body: { pin } }).catch(() => undefined);
       success(); pinCreated(); router.replace('/');
     } catch { setError(t('common.errors.generic')); setFirst(null); setReset((n) => n + 1); }
     finally { setBusy(false); }

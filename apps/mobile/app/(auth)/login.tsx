@@ -5,10 +5,10 @@ import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { Button, ErrorText, Field, Header, Press, Screen, Text } from '../../src/components/ui';
+import { adoptSession, ApiError, AuthSession, publicApi } from '../../src/lib/api';
 import { beginOtpFlow } from '../../src/lib/authFlow';
 import { errorMessage } from '../../src/lib/errors';
 import { hasLocalPin } from '../../src/lib/pin';
-import { supabase } from '../../src/lib/supabase';
 
 export default function Login() {
   const { t } = useTranslation();
@@ -20,18 +20,15 @@ export default function Login() {
 
   const onSubmit = handleSubmit(async (v) => {
     setError(null);
-    const email = v.identifier.trim().toLowerCase();
+    const identifier = v.identifier.trim();
     try {
-      // Supabase password auth accepts an email directly. Phone-number lookup
-      // remains a server feature because it requires privileged profile access.
-      if (!email.includes('@')) throw new Error('Invalid login credentials');
-      const { data, error: loginError } = await supabase.auth.signInWithPassword({ email, password: v.password });
-      if (loginError) throw loginError;
-      if (!data.session) throw new Error('Invalid login credentials');
-      router.replace((await hasLocalPin(data.session.user.id)) ? '/unlock' : '/create-pin');
+      const session = await publicApi<AuthSession>('/login', { identifier, password: v.password });
+      await adoptSession(session);
+      router.replace((await hasLocalPin(session.user.id)) ? '/unlock' : '/create-pin');
     }
     catch (e) {
-      if (e instanceof Error && /email not confirmed/i.test(e.message)) {
+      if (e instanceof ApiError && e.code === 'EMAIL_NOT_CONFIRMED') {
+        const email = e.details?.email ?? identifier.toLowerCase();
         beginOtpFlow(email);
         return router.push({ pathname: '/otp', params: { email, resend: '1' } });
       }

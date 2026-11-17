@@ -2,8 +2,8 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, ErrorText, Field, Header, Screen, Text } from '../../src/components/ui';
+import { publicApi } from '../../src/lib/api';
 import { errorMessage } from '../../src/lib/errors';
-import { supabase } from '../../src/lib/supabase';
 
 export default function Forgot() {
   const { t } = useTranslation();
@@ -19,18 +19,13 @@ export default function Forgot() {
   const run = async (fn: () => Promise<void>) => { setBusy(true); setError(null); try { await fn(); } catch (e) { setError(errorMessage(e, t)); } finally { setBusy(false); } };
   const send = () => run(async () => {
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) { setError(t('auth.errors.email')); return; }
-    const { error: sendError } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase());
-    if (sendError) throw sendError;
+    await publicApi('/forgot-password', { email: email.trim().toLowerCase() });
     setStep(2);
   }).then(() => undefined);
   const reset = () => run(async () => {
     if (pw.length < 8 || !/[A-Za-z]/.test(pw) || !/\d/.test(pw)) { setError(t('auth.errors.passwordWeak')); return; }
     const normalizedEmail = email.trim().toLowerCase();
-    const { error: verifyError } = await supabase.auth.verifyOtp({ email: normalizedEmail, token: code.trim(), type: 'recovery' });
-    if (verifyError) throw verifyError;
-    const { error: updateError } = await supabase.auth.updateUser({ password: pw });
-    if (updateError) throw updateError;
-    await supabase.auth.signOut();
+    await publicApi('/reset-password', { email: normalizedEmail, token: code.trim(), new_password: pw });
     setDone(true);
   });
 

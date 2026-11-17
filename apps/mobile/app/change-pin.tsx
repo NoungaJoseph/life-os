@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { PinPad } from '../src/components/PinPad';
 import { ErrorText, Header, Screen, Text, success } from '../src/components/ui';
+import { api } from '../src/lib/api';
 import { isWeakPin, setLocalPin, verifyLocalPin } from '../src/lib/pin';
 import { useSession } from '../src/lib/session';
 
@@ -14,6 +15,7 @@ export default function ChangePin() {
   const router = useRouter();
   const { session } = useSession();
   const [step, setStep] = useState<Step>('current');
+  const [currentPin, setCurrentPin] = useState('');
   const [fresh, setFresh] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [reset, setReset] = useState(0);
@@ -24,7 +26,7 @@ export default function ChangePin() {
     if (step === 'current') {
       const r = await verifyLocalPin(session!.user.id, pin);
       if (!r.ok) { setError(t('auth.pin.wrong', { n: r.triesLeft })); bump(); return; }
-      setStep('new'); bump(); return;
+      setCurrentPin(pin); setStep('new'); bump(); return;
     }
     if (step === 'new') {
       if (isWeakPin(pin)) { setError(t('auth.pin.weak')); bump(); return; }
@@ -33,6 +35,7 @@ export default function ChangePin() {
     if (pin !== fresh) { setError(t('auth.pin.mismatch')); setStep('new'); bump(); return; }
     try {
       await setLocalPin(session!.user.id, pin);
+      void api('/security/pin', { method: 'PUT', body: { pin, current_pin: currentPin } }).catch(() => undefined);
       success(); router.back();
     } catch { setError(t('common.errors.generic')); setStep('current'); bump(); }
   };

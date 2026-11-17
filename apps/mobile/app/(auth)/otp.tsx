@@ -3,9 +3,9 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TextInput, View } from 'react-native';
 import { ErrorText, Header, Press, Screen, Text, success } from '../../src/components/ui';
+import { adoptSession, AuthSession, publicApi } from '../../src/lib/api';
 import { endOtpFlow, isOtpFlowActive } from '../../src/lib/authFlow';
 import { errorMessage } from '../../src/lib/errors';
-import { supabase } from '../../src/lib/supabase';
 import { useTheme } from '../../src/theme/useTheme';
 
 const RESEND_SECONDS = 30;
@@ -26,14 +26,14 @@ export default function Otp() {
     if (!isOtpFlowActive(email)) router.replace('/register');
   }, [email, router]);
   useEffect(() => { if (wait <= 0) return; const id = setTimeout(() => setWait((w) => w - 1), 1000); return () => clearTimeout(id); }, [wait]);
-  useEffect(() => { if (resend && email) void supabase.auth.resend({ type: 'signup', email }).catch(() => undefined); }, [resend, email]);
+  useEffect(() => { if (resend && email) void publicApi('/resend-otp', { email }).catch(() => undefined); }, [resend, email]);
 
   const verify = async (value: string) => {
     if (busy) return;
     setBusy(true); setError(null);
     try {
-      const { error: verifyError } = await supabase.auth.verifyOtp({ email, token: value, type: 'signup' });
-      if (verifyError) throw verifyError;
+      const session = await publicApi<AuthSession>('/verify-otp', { email, token: value });
+      await adoptSession(session);
       endOtpFlow();
       success();
     }
@@ -43,8 +43,7 @@ export default function Otp() {
   const onChange = (v: string) => { const d = v.replace(/\D/g, '').slice(0, 6); setCode(d); if (d.length === 6) void verify(d); };
   const resendCode = async () => {
     try {
-      const { error: resendError } = await supabase.auth.resend({ type: 'signup', email });
-      if (resendError) throw resendError;
+      await publicApi('/resend-otp', { email });
       setInfo(t('auth.otp.sent')); setWait(RESEND_SECONDS);
     } catch (e) { setError(errorMessage(e, t)); }
   };
