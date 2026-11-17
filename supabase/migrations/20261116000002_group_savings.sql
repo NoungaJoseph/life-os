@@ -1,34 +1,34 @@
 -- Group savings: every member owns a locked share and receives only their own savings at the end date.
-create table public.savings_groups (
+create table if not exists public.savings_groups (
   id uuid primary key default gen_random_uuid(), creator_id uuid not null references public.profiles(id) on delete restrict,
   name text not null check (length(trim(name)) between 2 and 80), invite_code text not null unique check (length(invite_code) between 8 and 16),
   contribution_amount bigint not null check (contribution_amount > 0), frequency text not null check (frequency in ('daily','weekly','monthly')),
   start_date date not null, end_date date not null check (end_date >= start_date), hide_amounts boolean not null default false,
   status text not null default 'active' check (status in ('active','completed')), created_at timestamptz not null default now()
 );
-create table public.savings_group_members (
+create table if not exists public.savings_group_members (
   id uuid primary key default gen_random_uuid(), group_id uuid not null references public.savings_groups(id) on delete restrict,
   user_id uuid not null references public.profiles(id) on delete restrict, share_account_id uuid references public.ledger_accounts(id) on delete restrict,
   lock_accepted_at timestamptz not null, joined_at timestamptz not null default now(), left_at timestamptz, released_at timestamptz,
   unique(group_id,user_id)
 );
-create table public.savings_group_contributions (
+create table if not exists public.savings_group_contributions (
   id uuid primary key default gen_random_uuid(), group_id uuid not null references public.savings_groups(id) on delete restrict,
   member_id uuid not null references public.savings_group_members(id) on delete restrict, user_id uuid not null references public.profiles(id) on delete restrict,
   due_on date not null, amount bigint not null check(amount > 0), transaction_id uuid not null references public.transactions(id) on delete restrict,
   paid_at timestamptz not null default now(), created_at timestamptz not null default now(), unique(member_id,due_on)
 );
-create table public.savings_group_nudges (
+create table if not exists public.savings_group_nudges (
   id uuid primary key default gen_random_uuid(), group_id uuid not null references public.savings_groups(id) on delete cascade,
   sender_id uuid not null references public.profiles(id) on delete cascade, recipient_id uuid not null references public.profiles(id) on delete cascade,
   sent_at timestamptz not null default now(), check(sender_id <> recipient_id)
 );
-create table public.savings_group_reminder_deliveries (
+create table if not exists public.savings_group_reminder_deliveries (
   member_id uuid not null references public.savings_group_members(id) on delete cascade, due_on date not null,
   sent_at timestamptz not null default now(), primary key(member_id,due_on)
 );
-create index savings_group_members_user_idx on public.savings_group_members(user_id) where left_at is null;
-create index savings_group_contributions_member_idx on public.savings_group_contributions(member_id,due_on);
+create index if not exists savings_group_members_user_idx on public.savings_group_members(user_id) where left_at is null;
+create index if not exists savings_group_contributions_member_idx on public.savings_group_contributions(member_id,due_on);
 
 alter table public.savings_groups enable row level security; alter table public.savings_group_members enable row level security;
 alter table public.savings_group_contributions enable row level security; alter table public.savings_group_nudges enable row level security;
@@ -36,9 +36,13 @@ alter table public.savings_group_reminder_deliveries enable row level security;
 create or replace function public.is_savings_group_member(p_group uuid) returns boolean language sql stable security definer set search_path=public as $$select exists(select 1 from public.savings_group_members where group_id=p_group and user_id=auth.uid() and left_at is null)$$;
 revoke all on function public.is_savings_group_member(uuid) from public,anon;
 grant execute on function public.is_savings_group_member(uuid) to authenticated,service_role;
+drop policy if exists group_member_read on public.savings_groups;
 create policy group_member_read on public.savings_groups for select to authenticated using(public.is_savings_group_member(id));
+drop policy if exists group_members_read on public.savings_group_members;
 create policy group_members_read on public.savings_group_members for select to authenticated using(public.is_savings_group_member(group_id));
+drop policy if exists group_own_contributions on public.savings_group_contributions;
 create policy group_own_contributions on public.savings_group_contributions for select to authenticated using(user_id=auth.uid());
+drop policy if exists group_own_nudges on public.savings_group_nudges;
 create policy group_own_nudges on public.savings_group_nudges for select to authenticated using(sender_id=auth.uid() or recipient_id=auth.uid());
 revoke all on public.savings_groups, public.savings_group_members, public.savings_group_contributions, public.savings_group_nudges from anon,authenticated;
 revoke all on public.savings_group_reminder_deliveries from anon,authenticated;
@@ -47,6 +51,7 @@ grant select on public.savings_groups, public.savings_group_members, public.savi
 -- A group cannot be deleted once any contribution exists. This also protects ledger history.
 create or replace function public.protect_funded_group() returns trigger language plpgsql as $$
 begin if exists(select 1 from public.savings_group_contributions where group_id=old.id) then raise exception 'A funded group cannot be deleted'; end if; return old; end; $$;
+drop trigger if exists savings_group_no_delete_when_funded on public.savings_groups;
 create trigger savings_group_no_delete_when_funded before delete on public.savings_groups for each row execute function public.protect_funded_group();
 
 create or replace function public.contribute_group(p_user uuid,p_group uuid,p_due date,p_key text) returns jsonb

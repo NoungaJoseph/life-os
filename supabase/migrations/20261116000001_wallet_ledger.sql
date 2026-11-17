@@ -1,7 +1,7 @@
 -- MY LIFE OS: integer-only double-entry wallet ledger, payment requests and locked goal vault.
 -- Amounts are whole XAF francs. Ledger entries are immutable; corrections use reversing transactions.
 
-create table public.wallets (
+create table if not exists public.wallets (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null unique references public.profiles(id) on delete cascade,
   currency char(3) not null default 'XAF' check (currency = upper(currency)),
@@ -10,7 +10,7 @@ create table public.wallets (
   created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
 
-create table public.ledger_accounts (
+create table if not exists public.ledger_accounts (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references public.profiles(id) on delete cascade,
   wallet_id uuid references public.wallets(id) on delete cascade,
@@ -24,7 +24,7 @@ create table public.ledger_accounts (
   unique nulls not distinct (user_id, code, currency)
 );
 
-create table public.transactions (
+create table if not exists public.transactions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   wallet_id uuid references public.wallets(id) on delete restrict,
@@ -40,7 +40,7 @@ create table public.transactions (
   unique (user_id, idempotency_key)
 );
 
-create table public.ledger_entries (
+create table if not exists public.ledger_entries (
   id uuid primary key default gen_random_uuid(),
   transaction_id uuid not null references public.transactions(id) on delete restrict,
   account_id uuid not null references public.ledger_accounts(id) on delete restrict,
@@ -49,7 +49,7 @@ create table public.ledger_entries (
   unique (transaction_id, account_id)
 );
 
-create table public.payment_requests (
+create table if not exists public.payment_requests (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   wallet_id uuid not null references public.wallets(id) on delete restrict,
@@ -64,44 +64,46 @@ create table public.payment_requests (
   created_at timestamptz not null default now(), updated_at timestamptz not null default now(), completed_at timestamptz,
   unique (provider, provider_reference), unique(user_id,direction,idempotency_key)
 );
-create table public.payment_webhook_events (
+create table if not exists public.payment_webhook_events (
   id uuid primary key default gen_random_uuid(), provider text not null, event_id text not null,
   provider_reference text not null, status text not null, payload jsonb not null, received_at timestamptz not null default now(),
   unique(provider,event_id)
 );
 
-create table public.vault_settings (
+create table if not exists public.vault_settings (
   user_id uuid primary key references public.profiles(id) on delete cascade,
   emergency_share smallint not null default 20 check (emergency_share between 10 and 40),
   lock_accepted_at timestamptz, created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
-alter table public.goals add column vault_enabled boolean not null default false,
-  add column vault_emergency boolean not null default false,
-  add column vault_priority smallint not null default 3 check (vault_priority between 1 and 5),
-  add column vault_target bigint check (vault_target is null or vault_target > 0),
-  add column vault_account_id uuid references public.ledger_accounts(id) on delete set null;
+alter table public.goals add column if not exists vault_enabled boolean not null default false,
+  add column if not exists vault_emergency boolean not null default false,
+  add column if not exists vault_priority smallint not null default 3 check (vault_priority between 1 and 5),
+  add column if not exists vault_target bigint check (vault_target is null or vault_target > 0),
+  add column if not exists vault_account_id uuid references public.ledger_accounts(id) on delete set null;
 
-create table public.release_requests (
+create table if not exists public.release_requests (
   id uuid primary key default gen_random_uuid(), user_id uuid not null references public.profiles(id) on delete cascade,
   goal_id uuid not null references public.goals(id) on delete restrict, amount bigint not null check (amount > 0), reason text not null,
   status text not null default 'pending' check (status in ('pending','approved','rejected','completed')),
   reviewed_by uuid references auth.users(id), reviewed_at timestamptz, created_at timestamptz not null default now()
 );
 
-create table public.money_audit_log (
+create table if not exists public.money_audit_log (
   id bigint generated always as identity primary key, user_id uuid references public.profiles(id) on delete set null,
   action text not null, entity_type text not null, entity_id uuid, metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
 
-create index ledger_entries_account_idx on public.ledger_entries(account_id, created_at);
-create index transactions_user_created_idx on public.transactions(user_id, created_at desc);
-create index payment_requests_user_created_idx on public.payment_requests(user_id, created_at desc);
+create index if not exists ledger_entries_account_idx on public.ledger_entries(account_id, created_at);
+create index if not exists transactions_user_created_idx on public.transactions(user_id, created_at desc);
+create index if not exists payment_requests_user_created_idx on public.payment_requests(user_id, created_at desc);
 insert into public.ledger_accounts(user_id,wallet_id,code,kind,currency) values
-  (null,null,'provider:sandbox','provider_clearing','XAF'), (null,null,'provider:mtn','provider_clearing','XAF'), (null,null,'provider:orange','provider_clearing','XAF');
+  (null,null,'provider:sandbox','provider_clearing','XAF'), (null,null,'provider:mtn','provider_clearing','XAF'), (null,null,'provider:orange','provider_clearing','XAF')
+on conflict do nothing;
 
 create or replace function public.reject_ledger_mutation() returns trigger language plpgsql as $$
 begin raise exception 'Ledger entries are append-only; create a reversal transaction'; end; $$;
+drop trigger if exists ledger_entries_no_update on public.ledger_entries;
 create trigger ledger_entries_no_update before update or delete on public.ledger_entries for each row execute function public.reject_ledger_mutation();
 
 create or replace function public.apply_ledger_entry() returns trigger language plpgsql as $$
@@ -113,6 +115,7 @@ begin
   update public.ledger_accounts set balance = next_balance where id = new.account_id;
   return new;
 end; $$;
+drop trigger if exists ledger_entry_apply on public.ledger_entries;
 create trigger ledger_entry_apply before insert on public.ledger_entries for each row execute function public.apply_ledger_entry();
 
 create or replace function public.assert_transaction_balanced() returns trigger language plpgsql as $$
@@ -122,6 +125,7 @@ begin
   if total <> 0 then raise exception 'Unbalanced transaction % (sum %)', new.transaction_id, total; end if;
   return null;
 end; $$;
+drop trigger if exists ledger_transaction_balanced on public.ledger_entries;
 create constraint trigger ledger_transaction_balanced after insert on public.ledger_entries deferrable initially deferred for each row execute function public.assert_transaction_balanced();
 
 create or replace function public.ensure_wallet(p_user uuid, p_currency char(3) default 'XAF') returns public.wallets
@@ -174,13 +178,21 @@ alter table public.transactions enable row level security; alter table public.le
 alter table public.payment_requests enable row level security; alter table public.vault_settings enable row level security;
 alter table public.release_requests enable row level security; alter table public.money_audit_log enable row level security;
 alter table public.payment_webhook_events enable row level security;
+drop policy if exists wallets_owner on public.wallets;
 create policy wallets_owner on public.wallets for select to authenticated using(user_id=auth.uid());
+drop policy if exists ledger_accounts_owner on public.ledger_accounts;
 create policy ledger_accounts_owner on public.ledger_accounts for select to authenticated using(user_id=auth.uid());
+drop policy if exists transactions_owner on public.transactions;
 create policy transactions_owner on public.transactions for select to authenticated using(user_id=auth.uid());
+drop policy if exists ledger_entries_owner on public.ledger_entries;
 create policy ledger_entries_owner on public.ledger_entries for select to authenticated using(exists(select 1 from public.transactions t where t.id=transaction_id and t.user_id=auth.uid()));
+drop policy if exists payment_requests_owner on public.payment_requests;
 create policy payment_requests_owner on public.payment_requests for select to authenticated using(user_id=auth.uid());
+drop policy if exists vault_settings_owner on public.vault_settings;
 create policy vault_settings_owner on public.vault_settings for select to authenticated using(user_id=auth.uid());
+drop policy if exists release_requests_owner on public.release_requests;
 create policy release_requests_owner on public.release_requests for select to authenticated using(user_id=auth.uid());
+drop policy if exists money_audit_owner on public.money_audit_log;
 create policy money_audit_owner on public.money_audit_log for select to authenticated using(user_id=auth.uid());
 
 revoke all on public.wallets, public.ledger_accounts, public.transactions, public.ledger_entries, public.payment_requests, public.release_requests, public.money_audit_log from anon, authenticated;
