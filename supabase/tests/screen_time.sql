@@ -1,0 +1,10 @@
+begin;
+select plan(6);
+select has_table('public','screen_time_rules','rules table exists');
+select has_table('public','screen_time_usage','usage table exists');
+select policies_are('public','screen_time_rules',array['screen_time_rules_owner'],'rules are owner scoped');
+select policies_are('public','screen_time_usage',array['screen_time_usage_owner'],'usage is owner scoped');
+select is((select relrowsecurity from pg_class where oid='public.screen_time_rules'::regclass),true,'rules use RLS');
+select is((select relrowsecurity from pg_class where oid='public.screen_time_usage'::regclass),true,'usage uses RLS');
+select * from finish();
+rollback;

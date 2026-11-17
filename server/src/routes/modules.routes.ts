@@ -155,7 +155,8 @@ modulesRouter.put('/notification-preferences', validate(prefsBody), asyncHandler
 const EXPORT_TABLES = ['life_visions', 'user_life_areas', 'goals', 'goal_milestones', 'tasks', 'habits', 'habit_completions', 'journal_entries',
   ...resources.map((r) => r.table).filter((t) => t !== 'workouts'), 'weekly_reviews', 'monthly_reviews', 'notification_preferences', 'debt_payments',
   'wallets', 'ledger_accounts', 'transactions', 'payment_requests', 'vault_settings', 'release_requests', 'money_audit_log',
-  'savings_group_members', 'savings_group_contributions', 'transformation_areas', 'transformation_behaviors', 'transformation_events', 'transformation_checkins'];
+  'savings_group_members', 'savings_group_contributions', 'transformation_areas', 'transformation_behaviors', 'transformation_events', 'transformation_checkins',
+  'screen_time_rules', 'screen_time_usage'];
 modulesRouter.get('/me/export', asyncHandler(async (req, res) => {
   const out: Record<string, unknown> = { exported_at: new Date().toISOString() };
   const prof = await req.db!.from('profiles').select('*').eq('id', req.userId!).maybeSingle();

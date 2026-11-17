@@ -50,6 +50,7 @@ db.ledger_accounts=[{id:walletAccountId,user_id:U,wallet_id:walletId,code:'walle
 db.transactions=[];db.ledger_entries=[];db.payment_requests=[];db.payment_webhook_events=[];db.vault_settings=[];db.money_audit_log=[];
 db.savings_groups=[];db.savings_group_members=[];db.savings_group_contributions=[];db.savings_group_nudges=[];db.savings_group_reminder_deliveries=[];
 db.transformation_areas=[{id:'99999999-9999-4999-8999-999999999998',user_id:OTHER,category:'health',title:'PRIVATE OTHER USER AREA',current_self:'private',target_self:'private',reason:''}];db.transformation_behaviors=[];db.transformation_events=[];db.transformation_checkins=[];
+db.screen_time_rules=[{id:'99999999-9999-4999-8999-999999999997',user_id:OTHER,app_identifier:'com.other.private',app_name:'Private',daily_limit_minutes:30,block_minutes:60,commitment_mode:false,enabled:true}];db.screen_time_usage=[];
 
 const wd = (d: string) => dates.weekday(d);
 const mkHabit = (o: any) => ({ id: uid(), user_id: U, goal_id: null, description: null, frequency: 'daily', days_of_week: null, target_per_period: 1,
@@ -173,7 +174,7 @@ class Q {
       for (const p of list) {
         if (this.op === 'upsert' && this.onConflict) {
           const ex = rows.find((r) => this.onConflict!.every((k) => r[k] === p[k]));
-          if (ex) { Object.assign(ex, p); result.push(ex); continue; }
+          if (ex) { Object.assign(ex, this.table === 'screen_time_usage' ? { ...p, minutes: Math.max(ex.minutes, p.minutes) } : p); result.push(ex); continue; }
         }
         // fake of the DB-level FK / RLS-ish checks we care about
         if (this.table === 'habit_completions' && !db.habits.some((h) => h.id === p.habit_id)) return { data: null, error: { code: '23503', message: 'fk violation' } };

@@ -138,9 +138,17 @@ With the scheduler enabled, the API sends a bilingual push reminder the day befo
 
 Apply `supabase/migrations/20261117000001_transformation.sql` after the group savings migration. The mobile Profile screen opens a private transformation workspace for relationships, habits to leave behind, health, finance and character. Each area records the current and target self, a personal reason, concrete build/quit behaviors, optional links to an existing goal or habit, and one 1–10 check-in per week. Quit behaviors keep a current and best streak; an urge opens a one-minute pause and a private trigger note, while a relapse resets only the current streak. The weekly score history includes a simple line chart. All four tables have owner-scoped RLS and cascade on account deletion; the account export includes their rows. The insights engine receives only aggregate improvement counts, and the AI coach receives only those aggregate counts, never private self descriptions or trigger notes. EN/FR light/dark visual captures of the list, create form and detail are in `docs/screenshots/step5/`.
 
+## Screen time (Step 6)
+
+Apply `supabase/migrations/20261117000002_screen_time.sql`. Profile → Screen time lets users set per-app daily limits, 1- or 2-hour blocks, optional commitment mode, and view daily usage. Rules and usage are owner-scoped with RLS, included in account export, and deleted with the profile. An active commitment cannot be weakened or deleted in the API or database until its block window ends.
+
+Android uses the local Expo module in `apps/mobile/modules/my-life-screen-time`. Install a **development or production build**; Expo Go cannot load it. Grant Usage Access and enable the MY LIFE OS accessibility service after reading the in-app disclosure. Usage Access supplies per-app time totals. The accessibility service observes foreground package changes and draws the pause overlay; it does not inspect screen content. The service polls every 30 seconds while enabled. A daily limit starts one block window, and the user can revoke either permission in Android settings. Google Play distribution needs an [Accessibility API declaration and prominent disclosure](https://support.google.com/googleplay/android-developer/answer/10964491). Test the service on a physical Android device before release.
+
+iOS enforcement is gated off until Apple approves the [Family Controls entitlement](https://developer.apple.com/documentation/familycontrols). Apply for that entitlement for the app and its extensions in the Apple Developer portal, then add a native FamilyControls/DeviceActivity/ManagedSettings extension and a signed EAS development build. The current iOS app displays the capability state and stores settings, but **does not block apps**. Web and Expo Go also show a clear installed-build requirement. EN/FR light/dark screen captures are in `docs/screenshots/step6/`.
+
 ## Run order for Supabase
 
-SQL editor: run migrations in filename order through `20261117000001_transformation.sql`, then run `seed.sql`. Fill `server/.env` from `.env.example`.
+SQL editor: run migrations in filename order through `20261117000002_screen_time.sql`, then run `seed.sql`. Fill `server/.env` from `.env.example`.
 
 ## Web app
 

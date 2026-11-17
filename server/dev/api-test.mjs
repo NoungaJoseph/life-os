@@ -253,6 +253,21 @@ const secondCheckin = await call('PUT', `/transformation/${transformId}/checkin`
 const afterCheckin = await call('GET', `/transformation/${transformId}`);
 check('weekly check-in upserts', secondCheckin.status === 200 && afterCheckin.json?.data?.checkins?.length === 1, JSON.stringify(afterCheckin.json));
 
+console.log('screen time rules and usage');
+check('screen-time rule validates minutes', (await call('POST', '/screen-time/rules', { app_identifier: 'com.example.social', app_name: 'Social', daily_limit_minutes: 0, block_minutes: 60 })).status === 400);
+const screenRule = await call('POST', '/screen-time/rules', { app_identifier: 'com.example.social', app_name: 'Social', daily_limit_minutes: 30, block_minutes: 60, commitment_mode: true, enabled: true });
+const screenRuleId = screenRule.json?.data?.id;
+check('create screen-time rule', screenRule.status === 201 && !!screenRuleId, JSON.stringify(screenRule.json));
+check('read own screen-time rule', (await call('GET', `/screen-time/rules/${screenRuleId}`)).status === 200);
+check('another user screen-time rule hidden', (await call('GET', '/screen-time/rules/99999999-9999-4999-8999-999999999997')).status === 404 && !(await call('GET', '/screen-time/rules')).json.data.some((row) => row.app_identifier === 'com.other.private'));
+const block = await call('POST', `/screen-time/rules/${screenRuleId}/block`);
+check('start block window', block.status === 200 && !!block.json.data.blocked_until);
+check('commitment prevents disabling', (await call('PATCH', `/screen-time/rules/${screenRuleId}`, { enabled: false })).status === 409);
+check('commitment prevents deleting', (await call('DELETE', `/screen-time/rules/${screenRuleId}`)).status === 409);
+check('record daily usage', (await call('PUT', '/screen-time/usage', { app_identifier: 'com.example.social', used_on: LOCAL_TODAY, minutes: 22 })).status === 200);
+check('usage does not decrease on retry', (await call('PUT', '/screen-time/usage', { app_identifier: 'com.example.social', used_on: LOCAL_TODAY, minutes: 10 })).json.data.minutes === 22);
+check('usage query scoped to user', (await call('GET', '/screen-time/usage')).json.data.length === 1);
+
 console.log('registration, OTP, login');
 const P = '/public/auth';
 const reg = { first_name: 'Amina', last_name: 'Ngu', email: 'amina@example.com', phone: '6 77 12 34 56', password: 'Secret123' };

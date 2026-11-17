@@ -24,6 +24,7 @@ import { modulesRouter } from './modules.routes';
 import { walletRouter } from './wallet.routes';
 import { groupsRouter } from './groups.routes';
 import { transformationRouter } from './transformation.routes';
+import { screenTimeRouter } from './screen-time.routes';
 
 export const v1Router = Router();
 
@@ -33,6 +34,7 @@ v1Router.use(securityRouter);
 v1Router.use(walletRouter);
 v1Router.use(groupsRouter);
 v1Router.use(transformationRouter);
+v1Router.use(screenTimeRouter);
 
 // Profile
 v1Router.get('/profile', asyncHandler(async (req, res) => {
