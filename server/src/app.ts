@@ -15,7 +15,23 @@ export function createApp() {
 
   app.set('trust proxy', 1);
   app.use(helmet());
-  app.use(cors({ origin: env.corsOrigins, credentials: true, allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Payment-Signature', 'X-Device-Id', 'X-Device-Name', 'X-Platform'] }));
+  app.use(
+    cors({
+      origin: (origin, cb) => {
+        if (
+          !origin ||
+          env.corsOrigins.includes('*') ||
+          env.corsOrigins.includes(origin) ||
+          /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+        ) {
+          return cb(null, true);
+        }
+        return cb(null, false);
+      },
+      credentials: true,
+      allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Payment-Signature', 'X-Device-Id', 'X-Device-Name', 'X-Platform', 'Accept-Language'],
+    }),
+  );
   app.use(express.json({ limit: '1mb', verify: (req, _res, buf) => { (req as any).rawBody = buf.toString('utf8'); } }));
   app.use(
     pinoHttp({

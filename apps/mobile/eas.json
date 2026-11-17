@@ -1,9 +1,9 @@
 {
   "cli": { "version": ">= 16.0.0", "appVersionSource": "remote" },
   "build": {
-    "development": { "developmentClient": true, "distribution": "internal", "env": { "EXPO_PUBLIC_API_URL": "https://YOUR-API.onrender.com" } },
-    "preview": { "distribution": "internal", "android": { "buildType": "apk" }, "env": { "EXPO_PUBLIC_API_URL": "https://YOUR-API.onrender.com" } },
-    "production": { "autoIncrement": true, "env": { "EXPO_PUBLIC_API_URL": "https://YOUR-API.onrender.com" } }
+    "development": { "developmentClient": true, "distribution": "internal", "env": { "EXPO_PUBLIC_API_URL": "https://lifeos-backend-gs37.onrender.com" } },
+    "preview": { "distribution": "internal", "android": { "buildType": "apk" }, "env": { "EXPO_PUBLIC_API_URL": "https://lifeos-backend-gs37.onrender.com" } },
+    "production": { "autoIncrement": true, "env": { "EXPO_PUBLIC_API_URL": "https://lifeos-backend-gs37.onrender.com" } }
   },
   "submit": { "production": {} }
 }

@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+const BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'https://lifeos-backend-gs37.onrender.com').replace(/\/+$/, '');
 
 export class ApiError extends Error { constructor(public status: number, message: string) { super(message); } }
 
