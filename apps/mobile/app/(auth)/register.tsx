@@ -9,11 +9,12 @@ import { Button, ErrorText, Field, Header, Press, Screen, Text } from '../../src
 import { adoptSession, AuthSession, publicApi } from '../../src/lib/api';
 import { beginOtpFlow } from '../../src/lib/authFlow';
 import { errorMessage } from '../../src/lib/errors';
-import { hasLocalPin } from '../../src/lib/pin';
+import { useLock } from '../../src/lib/lock';
 
 export default function Register() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { unlock } = useLock();
   const [error, setError] = useState<string | null>(null);
   const [show, setShow] = useState(false);
 
@@ -42,7 +43,8 @@ export default function Register() {
       });
       if (res.session) {
         await adoptSession(res.session);
-        router.replace((await hasLocalPin(res.session.user.id)) ? '/unlock' : '/create-pin');
+        unlock();
+        router.replace('/onboarding');
         return;
       }
       beginOtpFlow(res.email || email);

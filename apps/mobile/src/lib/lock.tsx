@@ -14,13 +14,13 @@ export function LockProvider({ children }: { children: React.ReactNode }) {
   const { session } = useSession();
   const uid = session?.user.id;
   const [hasPin, setHasPin] = useState<boolean | null>(null);
-  const [locked, setLocked] = useState(true);               // start locked: a cold start always asks for the PIN
+  const [locked, setLocked] = useState(false);              // lock only after background timeout when a PIN is set
   const [lockAfter, setAfter] = useState<LockAfter>(1);
   const leftAt = useRef<number | null>(null);
 
   useEffect(() => { AsyncStorage.getItem(KEY).then((v) => { if (v === '0' || v === '1' || v === '5') setAfter(Number(v) as LockAfter); }).catch(() => undefined); }, []);
   useEffect(() => {
-    if (!uid) { setHasPin(null); setLocked(true); return; }
+    if (!uid) { setHasPin(null); setLocked(false); return; }
     setHasPin(null);
     hasLocalPin(uid).then(setHasPin);
   }, [uid]);
@@ -29,12 +29,12 @@ export function LockProvider({ children }: { children: React.ReactNode }) {
     const sub = AppState.addEventListener('change', (s) => {
       if (s === 'background' || s === 'inactive') { if (leftAt.current === null) leftAt.current = Date.now(); return; }
       if (s === 'active' && leftAt.current !== null) {
-        if (Date.now() - leftAt.current >= lockAfter * 60_000) setLocked(true);
+        if (hasPin && Date.now() - leftAt.current >= lockAfter * 60_000) setLocked(true);
         leftAt.current = null;
       }
     });
     return () => sub.remove();
-  }, [lockAfter]);
+  }, [lockAfter, hasPin]);
 
   const value: Ctx = {
     locked, hasPin, lockAfter,

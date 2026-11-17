@@ -22,7 +22,10 @@ export async function deviceSession(req: Request, _res: Response, next: NextFunc
       return next();
     }
     const { data: row, error } = await adminClient.from('device_sessions').select('id,revoked_at,last_active_at,device_name').eq('auth_session_id', sid).maybeSingle();
-    if (error) throw new AppError(500, 'DB_ERROR', 'Database error');
+    if (error) {
+      if (error.code === 'PGRST205' || error.code === '42P01' || /device_sessions/i.test(error.message)) return next();
+      throw new AppError(500, 'DB_ERROR', 'Database error');
+    }
     if (row?.revoked_at) { cache.set(sid, { revoked: true, at: now, touched: now }); throw new AppError(401, 'SESSION_REVOKED', 'This device was signed out.'); }
     if (!row) {
       await adminClient.from('device_sessions').insert({

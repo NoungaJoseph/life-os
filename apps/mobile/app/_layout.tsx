@@ -76,17 +76,20 @@ function Gate() {
     if (visualTutorial) return;
     if (loading || chosen === undefined) return;
     if (chosen === null) { if (group !== 'language') router.replace('/language'); return; }
-    if (!session) { if (group !== '(auth)' && group !== 'language') router.replace('/welcome'); return; }
-    if (lock.hasPin === null) return;
-    if (!lock.hasPin) { if (group !== 'create-pin') router.replace('/create-pin'); return; }
-    if (lock.locked) { if (group !== 'unlock') router.replace('/unlock'); return; }
-    if (!profile.data) return;
-    if (!done && group !== 'onboarding') router.replace('/onboarding');
-    else if (done && tourSeen === false && group !== 'tutorial') router.replace('/tutorial');
-    else if (done && tourSeen && (group === '(auth)' || group === 'unlock' || group === 'create-pin' || group === 'tutorial')) router.replace('/');
-  }, [loading, chosen, session, lock.hasPin, lock.locked, profile.data, done, tourSeen, group, router, visualTutorial]);
+    if (!session) {
+      if (group !== '(auth)' && group !== 'language') router.replace('/login');
+      return;
+    }
+    if (lock.hasPin && lock.locked) {
+      if (group !== 'unlock') router.replace('/unlock');
+      return;
+    }
+    if (group === '(auth)' || group === 'unlock' || group === 'language') {
+      router.replace('/');
+    }
+  }, [loading, chosen, session, lock.hasPin, lock.locked, group, router, visualTutorial]);
 
-  const waiting = !visualTutorial && (loading || chosen === undefined || (session && (lock.hasPin === null || (!lock.locked && lock.hasPin && (profile.isLoading || (done === true && tourSeen === undefined))))));
+  const waiting = !visualTutorial && (loading || chosen === undefined);
   if (waiting) return <Loading />;
   return (
     <View className="flex-1 bg-bg" style={themeVars(scheme)}>

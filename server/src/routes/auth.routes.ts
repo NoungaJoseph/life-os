@@ -20,7 +20,7 @@ const sessionPayload = (s: { access_token: string; refresh_token: string; expire
 authRouter.post('/register', validate(registerSchema), asyncHandler(async (req, res) => {
   const { first_name, last_name, email, phone, password } = req.body;
   const taken = await adminClient.from('profiles').select('id').eq('phone', phone).maybeSingle();
-  if (taken.error) throw new AppError(500, 'DB_ERROR', 'Database error');
+  if (taken.error && !/phone|column/i.test(taken.error.message)) throw new AppError(500, 'DB_ERROR', 'Database error');
   if (taken.data) throw new AppError(409, 'PHONE_IN_USE', 'This phone number is already used.');
   const { data, error } = await anonClient.auth.signUp({ email, password, options: { data: { first_name, last_name, phone, display_name: first_name } } });
   if (error) {

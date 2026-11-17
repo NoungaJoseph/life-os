@@ -4,8 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { TextInput, View } from 'react-native';
 import { ErrorText, Header, Press, Screen, Text, success } from '../../src/components/ui';
 import { adoptSession, AuthSession, publicApi } from '../../src/lib/api';
-import { endOtpFlow, isOtpFlowActive } from '../../src/lib/authFlow';
+import { endOtpFlow } from '../../src/lib/authFlow';
 import { errorMessage } from '../../src/lib/errors';
+import { useLock } from '../../src/lib/lock';
 import { useTheme } from '../../src/theme/useTheme';
 
 const RESEND_SECONDS = 30;
@@ -14,6 +15,7 @@ export default function Otp() {
   const { t } = useTranslation();
   const th = useTheme();
   const router = useRouter();
+  const { unlock } = useLock();
   const { email, resend } = useLocalSearchParams<{ email: string; resend?: string }>();
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -23,7 +25,7 @@ export default function Otp() {
   const returnToRegister = () => { endOtpFlow(); router.replace('/register'); };
 
   useEffect(() => {
-    if (!isOtpFlowActive(email)) router.replace('/register');
+    if (!email) router.replace('/login');
   }, [email, router]);
   useEffect(() => { if (wait <= 0) return; const id = setTimeout(() => setWait((w) => w - 1), 1000); return () => clearTimeout(id); }, [wait]);
   useEffect(() => { if (resend && email) void publicApi('/resend-otp', { email }).catch(() => undefined); }, [resend, email]);
@@ -35,7 +37,9 @@ export default function Otp() {
       const session = await publicApi<AuthSession>('/verify-otp', { email, token: value });
       await adoptSession(session);
       endOtpFlow();
+      unlock();
       success();
+      router.replace('/onboarding');
     }
     catch (e) { setError(errorMessage(e, t)); setCode(''); }
     finally { setBusy(false); }

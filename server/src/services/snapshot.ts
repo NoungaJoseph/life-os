@@ -1,4 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { profileRepository } from '../repositories/profile.repository';
+import { ensureTaxonomySeeded } from '../repositories/taxonomy.repository';
 import { AppError } from '../utils/errors';
 import { addDays, localDate } from './dates';
 import {
@@ -12,9 +14,20 @@ async function must<T>(p: PromiseLike<{ data: T | null; error: { message: string
   return (data ?? []) as T;
 }
 
+async function optional<T>(p: PromiseLike<{ data: T | null; error: { message: string } | null }>, fallback: T): Promise<T> {
+  try {
+    const { data, error } = await p;
+    if (error) return fallback;
+    return (data ?? fallback) as T;
+  } catch {
+    return fallback;
+  }
+}
+
 export async function loadSnapshot(db: SupabaseClient, userId: string) {
-  const profile = await must<any>(db.from('profiles').select('display_name,timezone,currency').eq('id', userId).maybeSingle());
-  const tz: string = profile.timezone ?? 'UTC';
+  await ensureTaxonomySeeded();
+  const profile = await profileRepository.get(db, userId);
+  const tz: string = profile?.timezone ?? 'UTC';
   const today = localDate(new Date().toISOString(), tz);
   const since = addDays(today, -60);
   const sinceIso = `${since}T00:00:00Z`;
@@ -29,8 +42,8 @@ export async function loadSnapshot(db: SupabaseClient, userId: string) {
     must<GoalRow[]>(db.from('goals').select('*').eq('user_id', userId).not('status', 'in', '(abandoned)')),
     must<PillarRow[]>(db.from('life_pillars').select('id,name').order('sort_order')),
     must<AreaPillar[]>(db.from('life_area_pillars').select('life_area_id,pillar_id')),
-    must<Array<{ id: string }>>(db.from('transformation_areas').select('id').eq('user_id', userId).limit(100)),
-    must<Array<{ area_id: string; current_score: number; week_start: string }>>(db.from('transformation_checkins').select('area_id,current_score,week_start').eq('user_id', userId).order('week_start', { ascending: false }).limit(200)),
+    optional<Array<{ id: string }>>(db.from('transformation_areas').select('id').eq('user_id', userId).limit(100), []),
+    optional<Array<{ area_id: string; current_score: number; week_start: string }>>(db.from('transformation_checkins').select('area_id,current_score,week_start').eq('user_id', userId).order('week_start', { ascending: false }).limit(200), []),
   ]);
   const goalIds = goals.map((g) => g.id);
   const milestones = goalIds.length

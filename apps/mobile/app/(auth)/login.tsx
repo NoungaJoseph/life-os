@@ -8,11 +8,12 @@ import { Button, ErrorText, Field, Header, Press, Screen, Text } from '../../src
 import { adoptSession, ApiError, AuthSession, publicApi } from '../../src/lib/api';
 import { beginOtpFlow } from '../../src/lib/authFlow';
 import { errorMessage } from '../../src/lib/errors';
-import { hasLocalPin } from '../../src/lib/pin';
+import { useLock } from '../../src/lib/lock';
 
 export default function Login() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { unlock } = useLock();
   const [error, setError] = useState<string | null>(null);
   const [show, setShow] = useState(false);
   const schema = useMemo(() => z.object({ identifier: z.string().trim().min(3, t('auth.errors.invalidCredentials')), password: z.string().min(1, t('common.errors.required')) }), [t]);
@@ -24,7 +25,8 @@ export default function Login() {
     try {
       const session = await publicApi<AuthSession>('/login', { identifier, password: v.password });
       await adoptSession(session);
-      router.replace((await hasLocalPin(session.user.id)) ? '/unlock' : '/create-pin');
+      unlock();
+      router.replace('/');
     }
     catch (e) {
       if (e instanceof ApiError && e.code === 'EMAIL_NOT_CONFIRMED') {

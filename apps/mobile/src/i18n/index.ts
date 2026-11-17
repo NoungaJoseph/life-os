@@ -21,12 +21,17 @@ let chosen: Lang | null | undefined;
 const listeners = new Set<() => void>();
 const emit = (v: Lang | null) => { chosen = v; listeners.forEach((f) => f()); };
 
-/** Reads the saved language once at start-up. */
-export async function loadLanguage(): Promise<Lang | null> {
-  let v: Lang | null = null;
+/** Reads the saved language once at start-up, defaulting to the device language. */
+export async function loadLanguage(): Promise<Lang> {
+  let v: Lang = deviceLang();
   try {
     const raw = await AsyncStorage.getItem(KEY);
-    if (raw === 'en' || raw === 'fr') { v = raw; await i18n.changeLanguage(raw); }
+    if (raw === 'en' || raw === 'fr') {
+      v = raw;
+    } else {
+      await AsyncStorage.setItem(KEY, v);
+    }
+    await i18n.changeLanguage(v);
   } catch { /* storage unavailable: fall back to the device language */ }
   emit(v);
   return v;

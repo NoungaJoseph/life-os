@@ -15,7 +15,10 @@ export const securityRouter = Router();
 // ---- Devices and sessions
 securityRouter.get('/sessions', asyncHandler(async (req, res) => {
   const { data, error } = await req.db!.from('device_sessions').select('id,auth_session_id,device_name,platform,created_at,last_active_at').eq('user_id', req.userId!).is('revoked_at', null).order('last_active_at', { ascending: false });
-  if (error) throw dbFail(error);
+  if (error) {
+    if (error.code === 'PGRST205' || error.code === '42P01' || /device_sessions/i.test(error.message)) return ok(res, []);
+    throw dbFail(error);
+  }
   ok(res, (data ?? []).map(({ auth_session_id, ...d }: any) => ({ ...d, current: auth_session_id === req.sessionId })));
 }));
 

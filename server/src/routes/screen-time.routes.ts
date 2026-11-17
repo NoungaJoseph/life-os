@@ -23,7 +23,9 @@ async function ownRule(req: any, id: string) {
 }
 
 screenTimeRouter.get('/screen-time/rules', asyncHandler(async (req, res) => {
-  ok(res, must<any[]>(await req.db!.from('screen_time_rules').select('*').eq('user_id', req.userId!).order('created_at', { ascending: false })));
+  const r = await req.db!.from('screen_time_rules').select('*').eq('user_id', req.userId!).order('created_at', { ascending: false });
+  if (r.error && (r.error.code === 'PGRST205' || /screen_time_rules/i.test(r.error.message))) return ok(res, []);
+  ok(res, must<any[]>(r));
 }));
 screenTimeRouter.get('/screen-time/rules/:id', validate(uuidParam, 'params'), asyncHandler(async (req, res) => {
   ok(res, await ownRule(req, req.params.id));
@@ -52,7 +54,9 @@ screenTimeRouter.get('/screen-time/usage', validate(z.object({ from: isoDate.opt
   let query = req.db!.from('screen_time_usage').select('*').eq('user_id', req.userId!).order('used_on', { ascending: false }).limit(500);
   if (req.query.from) query = query.gte('used_on', String(req.query.from));
   if (req.query.to) query = query.lte('used_on', String(req.query.to));
-  ok(res, must<any[]>(await query));
+  const r = await query;
+  if (r.error && (r.error.code === 'PGRST205' || /screen_time_usage/i.test(r.error.message))) return ok(res, []);
+  ok(res, must<any[]>(r));
 }));
 screenTimeRouter.put('/screen-time/usage', validate(usageBody), asyncHandler(async (req, res) => {
   const rule = must<any>(await req.db!.from('screen_time_rules').select('id').eq('user_id', req.userId!).eq('app_identifier', req.body.app_identifier).maybeSingle());

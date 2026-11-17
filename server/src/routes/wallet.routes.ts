@@ -15,12 +15,24 @@ walletRouter.use('/wallet', rateLimit({ windowMs: 60_000, limit: 30, standardHea
 const key = (req: any) => { const value = req.get('Idempotency-Key')?.trim(); if (!value || value.length < 8 || value.length > 128) throw badRequest('A valid Idempotency-Key header is required'); return value; };
 
 walletRouter.get('/wallet', asyncHandler(async (req, res) => {
-  const { wallet, own } = await walletContext(req.userId!, 'sandbox');
-  ok(res, { ...wallet, balance: own.balance });
+  try {
+    const { wallet, own } = await walletContext(req.userId!, 'sandbox');
+    ok(res, { ...wallet, balance: own.balance });
+  } catch (e: any) {
+    if (/wallet_accounts|ledger_accounts|PGRST205/i.test(String(e?.message ?? ''))) {
+      return ok(res, { id: 'default', user_id: req.userId!, currency: 'XAF', balance: 0, status: 'active' });
+    }
+    throw e;
+  }
 }));
 walletRouter.get('/wallet/transactions', validate(transactionListQuery, 'query'), asyncHandler(async (req, res) => {
   const { page, pageSize, status, kind } = req.query as any; let query = adminClient.from('transactions').select('*',{ count:'exact' }).eq('user_id',req.userId!).order('created_at',{ ascending:false }).range((page-1)*pageSize,page*pageSize-1);
-  if(status) query=query.eq('status',status); if(kind) query=query.eq('kind',kind); const { data,error,count }=await query; if(error) throw new AppError(500,'WALLET_ERROR',error.message);const ids=(data??[]).map((row:any)=>row.id);const requests=ids.length?await adminClient.from('payment_requests').select('transaction_id,status').in('transaction_id',ids):{data:[]};const paymentStatus=new Map((requests.data??[]).map((row:any)=>[row.transaction_id,row.status]));ok(res,(data??[]).map((row:any)=>({...row,status:paymentStatus.get(row.id)??row.status})),{page,pageSize,total:count??0});
+  if(status) query=query.eq('status',status); if(kind) query=query.eq('kind',kind); const { data,error,count }=await query;
+  if(error) {
+    if (error.code === 'PGRST205' || /transactions/i.test(error.message)) return ok(res, [], { page, pageSize, total: 0 });
+    throw new AppError(500,'WALLET_ERROR',error.message);
+  }
+  const ids=(data??[]).map((row:any)=>row.id);const requests=ids.length?await adminClient.from('payment_requests').select('transaction_id,status').in('transaction_id',ids):{data:[]};const paymentStatus=new Map((requests.data??[]).map((row:any)=>[row.transaction_id,row.status]));ok(res,(data??[]).map((row:any)=>({...row,status:paymentStatus.get(row.id)??row.status})),{page,pageSize,total:count??0});
 }));
 
 async function startPayment(req: any, direction: 'deposit'|'withdrawal') {
@@ -55,7 +67,17 @@ async function vaultState(userId:string){
   const balances=new Map((accounts.data??[]).map((a:any)=>[a.id,a.balance]));
   return {wallet,settings:settings.data,goals:(goals.data??[]).map((g:any)=>({...g,balance:Number(balances.get(g.vault_account_id)??0)}))};
 }
-walletRouter.get('/vault',asyncHandler(async(req,res)=>{const state=await vaultState(req.userId!);ok(res,{accepted:!!state.settings.lock_accepted_at,emergency_share:state.settings.emergency_share,total_locked:state.goals.filter((g:any)=>g.vault_enabled).reduce((n:number,g:any)=>n+g.balance,0),goals:state.goals.filter((g:any)=>g.vault_enabled),available_goals:state.goals});}));
+walletRouter.get('/vault',asyncHandler(async(req,res)=>{
+  try {
+    const state=await vaultState(req.userId!);
+    ok(res,{accepted:!!state.settings.lock_accepted_at,emergency_share:state.settings.emergency_share,total_locked:state.goals.filter((g:any)=>g.vault_enabled).reduce((n:number,g:any)=>n+g.balance,0),goals:state.goals.filter((g:any)=>g.vault_enabled),available_goals:state.goals});
+  } catch (e: any) {
+    if (/vault_settings|wallet_accounts|vault_enabled|PGRST205/i.test(String(e?.message ?? ''))) {
+      return ok(res, { accepted: false, emergency_share: 20, total_locked: 0, goals: [], available_goals: [] });
+    }
+    throw e;
+  }
+}));
 walletRouter.put('/vault/consent',asyncHandler(async(req,res)=>{const {data,error}=await adminClient.from('vault_settings').upsert({user_id:req.userId!,lock_accepted_at:new Date().toISOString()},{onConflict:'user_id'}).select().single();if(error)throw new AppError(500,'VAULT_ERROR',error.message);ok(res,data);}));
 walletRouter.put('/vault/goals/:id',validate(uuidParam,'params'),validate(vaultGoalSchema),asyncHandler(async(req,res)=>{const b=req.body;const {data,error}=await adminClient.from('goals').update({vault_enabled:b.enabled,vault_emergency:b.emergency,vault_priority:b.priority,vault_target:b.target}).eq('id',req.params.id).eq('user_id',req.userId!).select().maybeSingle();if(error)throw new AppError(500,'VAULT_ERROR',error.message);if(!data)throw new AppError(404,'NOT_FOUND','Goal not found');ok(res,data);}));
 const allocation=async(userId:string,amount:number)=>{const state=await vaultState(userId);if(!state.settings.lock_accepted_at)throw new AppError(409,'VAULT_CONSENT_REQUIRED','Accept the Vault lock before depositing');const enabled=state.goals.filter((g:any)=>g.vault_enabled);if(!enabled.length)throw badRequest('Add at least one Vault goal');const parts=allocateVault(amount,enabled.map((g:any)=>({id:g.id,kind:g.vault_emergency?'emergency':undefined,priority:g.vault_priority,target:g.vault_target,balance:g.balance})),state.settings.emergency_share);return{state:{...state,goals:enabled},parts};};

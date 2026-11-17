@@ -40,7 +40,9 @@ async function ownedLink(req: any, table: 'goals' | 'habits', id?: string | null
 }
 
 transformationRouter.get('/transformation', asyncHandler(async (req, res) => {
-  const areas = must<any[]>(await req.db!.from('transformation_areas').select('*').eq('user_id', req.userId!).order('created_at', { ascending: false }));
+  const result = await req.db!.from('transformation_areas').select('*').eq('user_id', req.userId!).order('created_at', { ascending: false });
+  if (result.error && (result.error.code === 'PGRST205' || /transformation_areas/i.test(result.error.message))) return ok(res, []);
+  const areas = must<any[]>(result);
   ok(res, areas);
 }));
 transformationRouter.post('/transformation', validate(areaBody), asyncHandler(async (req, res) => {
