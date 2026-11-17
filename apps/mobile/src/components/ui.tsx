@@ -8,7 +8,7 @@ import {
   ActivityIndicator, Animated, Easing, KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView,
   StyleSheet, Text as RNText, TextInput, TextInputProps, View, ViewStyle,
 } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { fontSize, fonts, radius, shadow, shadowLift, spacing } from '../theme/tokens';
 import { useTheme } from '../theme/useTheme';
@@ -128,6 +128,38 @@ export function FadeIn({ children, delay = 0 }: { children: React.ReactNode; del
   return (
     <Animated.View style={{ opacity: v, transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }}>{children}</Animated.View>
   );
+}
+
+/** Small, deterministic burst for milestones and completed goals. */
+export function Celebration({ active }: { active: boolean }) {
+  const progress = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!active) return;
+    progress.setValue(0);
+    const animation = Animated.timing(progress, { toValue: 1, duration: 1350, easing: Easing.out(Easing.cubic), useNativeDriver: true });
+    animation.start();
+    return () => animation.stop();
+  }, [active, progress]);
+  if (!active || Platform.OS === 'web') return null;
+  return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: 'visible', alignItems: 'center', justifyContent: 'center' }]}>
+    {Array.from({ length: 12 }, (_, i) => {
+      const angle = (i / 12) * Math.PI * 2;
+      return <Animated.View key={i} style={{ position: 'absolute', width: 7, height: 11, borderRadius: 2, backgroundColor: i % 2 ? '#14B8A6' : '#C9A24B', opacity: progress.interpolate({ inputRange: [0, 0.15, 1], outputRange: [0, 1, 0] }), transform: [{ translateX: progress.interpolate({ inputRange: [0, 1], outputRange: [0, Math.cos(angle) * 88] }) }, { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [0, Math.sin(angle) * 88] }) }, { rotate: progress.interpolate({ inputRange: [0, 1], outputRange: ['0deg', `${i * 65}deg`] }) }] }} />;
+    })}
+  </View>;
+}
+
+export function CountUp({ value, format }: { value: number; format: (n: number) => string }) {
+  const [shown, setShown] = React.useState(Platform.OS === 'web' ? value : 0);
+  const animated = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const listener = animated.addListener(({ value: next }) => setShown(Math.round(next)));
+    const run = Animated.timing(animated, { toValue: value, duration: 850, easing: Easing.out(Easing.cubic), useNativeDriver: false });
+    run.start();
+    return () => { run.stop(); animated.removeListener(listener); };
+  }, [value, animated]);
+  return <>{format(Platform.OS === 'web' ? value : shown)}</>;
 }
 
 // ---------- Inputs ----------
@@ -356,11 +388,22 @@ export function EmptyState({ icon = 'leaf-outline', title, body, action, onActio
   icon?: keyof typeof Ionicons.glyphMap; title: string; body?: string; action?: string; onAction?: () => void;
 }) {
   const t = useTheme();
+  const illustrated = ['receipt-outline', 'flag-outline', 'people-outline', 'leaf-outline', 'hourglass-outline'].includes(icon);
   return (
     <View className="items-center gap-2 py-6">
-      <View className="h-14 w-14 items-center justify-center rounded-full bg-surface-alt">
-        <Ionicons name={icon} size={26} color={t.primary} />
-      </View>
+      {illustrated ? <View className="h-24 w-28 items-center justify-center">
+        <Svg width={112} height={96} viewBox="0 0 112 96" accessibilityElementsHidden>
+          <Circle cx="56" cy="48" r="42" fill={t.surfaceAlt} />
+          <Circle cx="92" cy="14" r="5" fill={t.gold} opacity="0.7" />
+          <Circle cx="16" cy="70" r="3" fill={t.primary} opacity="0.7" />
+          <Path d="M26 75 Q56 85 86 75" stroke={t.gold} strokeWidth="2" fill="none" opacity="0.65" />
+          {icon === 'receipt-outline' && <><Rect x="36" y="22" width="40" height="49" rx="7" fill={t.surface} stroke={t.primary} strokeWidth="2" /><Path d="M44 35h24M44 44h17M44 53h21" stroke={t.gold} strokeWidth="2" strokeLinecap="round" /></>}
+          {icon === 'flag-outline' && <><Path d="M42 72V25M43 27Q56 17 70 27L64 39Q52 33 43 40" fill={t.surface} stroke={t.primary} strokeWidth="2.5" strokeLinejoin="round" /><Circle cx="72" cy="60" r="7" fill={t.gold} /></>}
+          {icon === 'people-outline' && <><Circle cx="45" cy="37" r="8" fill={t.surface} stroke={t.primary} strokeWidth="2" /><Circle cx="67" cy="37" r="8" fill={t.surface} stroke={t.primary} strokeWidth="2" /><Path d="M29 67Q29 50 45 50Q55 50 56 59Q58 50 67 50Q83 50 83 67Z" fill={t.surface} stroke={t.gold} strokeWidth="2" /></>}
+          {icon === 'leaf-outline' && <><Path d="M35 62Q37 25 75 25Q77 62 43 69Q35 67 35 62Z" fill={t.surface} stroke={t.primary} strokeWidth="2.5" /><Path d="M38 67Q51 50 71 34" stroke={t.gold} strokeWidth="2.5" fill="none" /></>}
+          {icon === 'hourglass-outline' && <><Path d="M39 24h34M39 72h34M43 26Q43 41 56 47Q69 41 69 26M43 70Q43 55 56 49Q69 55 69 70" stroke={t.primary} strokeWidth="2.5" fill={t.surface} /><Path d="M49 65h14l-7-8Z" fill={t.gold} /></>}
+        </Svg>
+      </View> : <View className="h-14 w-14 items-center justify-center rounded-full bg-surface-alt"><Ionicons name={icon} size={26} color={t.primary} /></View>}
       <Text weight="600">{title}</Text>
       {body ? <Text size="sm" muted style={{ textAlign: 'center' }}>{body}</Text> : null}
       {action ? <View className="self-stretch"><Button title={action} onPress={onAction ?? (() => undefined)} variant="ghost" /></View> : null}

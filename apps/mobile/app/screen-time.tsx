@@ -19,8 +19,8 @@ export default function ScreenTime() {
   const [commitment, setCommitment] = useState(false); const [adding, setAdding] = useState(process.env.EXPO_PUBLIC_VISUAL_TESTS === '1' && preview === 'form');
   const visual = process.env.EXPO_PUBLIC_VISUAL_TESTS === '1';
   const available = screenTimeCapability() || (visual && preview === 'form');
-  const rules = useQuery({ queryKey: ['screen-time-rules'], queryFn: () => visual ? Promise.resolve([{ id: 'preview', app_identifier: 'com.example.focus', app_name: 'Focus', daily_limit_minutes: 30, block_minutes: 60, commitment_mode: true, enabled: true, blocked_until: null }] as Rule[]) : api<Rule[]>('/screen-time/rules') });
-  const usage = useQuery({ queryKey: ['screen-time-usage'], queryFn: () => visual ? Promise.resolve([{ app_identifier: 'com.example.focus', used_on: new Date().toISOString().slice(0, 10), minutes: 24 }] as DailyUsage[]) : api<DailyUsage[]>('/screen-time/usage') });
+  const rules = useQuery({ queryKey: ['screen-time-rules'], queryFn: () => visual ? Promise.resolve(preview === 'empty' ? [] : [{ id: 'preview', app_identifier: 'com.example.focus', app_name: 'Focus', daily_limit_minutes: 30, block_minutes: 60, commitment_mode: true, enabled: true, blocked_until: null }] as Rule[]) : api<Rule[]>('/screen-time/rules') });
+  const usage = useQuery({ queryKey: ['screen-time-usage'], queryFn: () => visual ? Promise.resolve(preview === 'empty' ? [] : [{ app_identifier: 'com.example.focus', used_on: new Date().toISOString().slice(0, 10), minutes: 24 }] as DailyUsage[]) : api<DailyUsage[]>('/screen-time/usage') });
   const apps = useQuery({ queryKey: ['installed-apps'], queryFn: () => visual ? Promise.resolve([{ identifier: 'com.example.focus', name: 'Focus' }] as InstalledApp[]) : screenTimeNative!.installedApps(), enabled: available && adding });
   const usagePermission = available && !!screenTimeNative?.hasUsagePermission();
   const accessibilityPermission = available && !!screenTimeNative?.hasAccessibilityPermission();

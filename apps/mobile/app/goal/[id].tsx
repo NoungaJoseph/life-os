@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Alert, Platform, View } from 'react-native';
 import { GoalRow, PACE_TONE } from '../../src/components/domain';
 import {
-  Button, Card, Check, EmptyState, ErrorState, ErrorText, Field, Header, Loading, Pill, ProgressRing, Screen, SectionHeader, Text, success,
+  Button, Card, Celebration, Check, EmptyState, ErrorState, ErrorText, Field, Header, Loading, Pill, ProgressRing, Screen, SectionHeader, Text, success,
 } from '../../src/components/ui';
 import i18n from '../../src/i18n';
 import { api, ApiError } from '../../src/lib/api';
@@ -31,6 +31,7 @@ export default function GoalDetail() {
   const [error, setError] = useState<string | null>(null);
   const [steps, setSteps] = useState<Step[] | null>(null);
   const [added, setAdded] = useState<Record<number, boolean>>({});
+  const [celebrating, setCelebrating] = useState(false);
 
   const patch = useMutation({
     mutationFn: (body: Record<string, unknown>) => api(`/goals/${id}`, { method: 'PATCH', body }),
@@ -88,6 +89,7 @@ export default function GoalDetail() {
       <Header title={goal.title} subtitle={`${t(`domain.goalType.${goal.goal_type}`, { defaultValue: goal.goal_type })}${goal.target_date ? ` · ${t('goalDetail.due', { date: shortDate(goal.target_date) })}` : ''}`} back />
 
       <Card className="flex-row items-center gap-[16px]">
+        <Celebration active={celebrating} />
         <ProgressRing value={goal.progress} size={92} label={`${Math.round(goal.progress * 100)}%`} />
         <View className="flex-1 gap-[6px]">
           <Pill label={pace.label} tone={pace.tone} />
@@ -150,7 +152,7 @@ export default function GoalDetail() {
       <ErrorText message={error} />
       {goal.status !== 'completed' ? (
         <Button title={t('goalDetail.markCompleted')} icon="checkmark-circle-outline" loading={patch.isPending}
-          onPress={() => { setError(null); patch.mutate({ status: 'completed' }, { onSuccess: () => success() }); }} />
+          onPress={() => { setError(null); patch.mutate({ status: 'completed' }, { onSuccess: () => { success(); setCelebrating(true); setTimeout(() => setCelebrating(false), 1500); } }); }} />
       ) : (
         <Button title={t('goalDetail.reopen')} variant="ghost" onPress={() => patch.mutate({ status: 'active' })} loading={patch.isPending} />
       )}

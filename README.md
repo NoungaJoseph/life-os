@@ -146,6 +146,10 @@ Android uses the local Expo module in `apps/mobile/modules/my-life-screen-time`.
 
 iOS enforcement is gated off until Apple approves the [Family Controls entitlement](https://developer.apple.com/documentation/familycontrols). Apply for that entitlement for the app and its extensions in the Apple Developer portal, then add a native FamilyControls/DeviceActivity/ManagedSettings extension and a signed EAS development build. The current iOS app displays the capability state and stores settings, but **does not block apps**. Web and Expo Go also show a clear installed-build requirement. EN/FR light/dark screen captures are in `docs/screenshots/step6/`.
 
+## Mobile design system (Step 7)
+
+The shared mobile UI uses teal/navy/gold tokens in both phone themes, one card and spacing scale, pill tabs, gradient hero cards, animated progress rings, skeleton loaders, and haptics on primary actions. Empty states for wallet, Vault, groups, transformation, and screen time now use original SVG illustrations. Wallet balance counts up after a change, and completing a goal triggers a brief celebration animation. These elements live in `apps/mobile/src/components/ui.tsx` so their contrast, spacing, and motion remain consistent across screens. Visual checks are in `docs/screenshots/step7/` and the earlier step folders.
+
 ## Run order for Supabase
 
 SQL editor: run migrations in filename order through `20261117000002_screen_time.sql`, then run `seed.sql`. Fill `server/.env` from `.env.example`.
