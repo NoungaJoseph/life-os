@@ -137,3 +137,13 @@ export const breakdownSchema = z.object({
   description: z.string().trim().max(4000).optional(), target_date: isoDate.optional(), lang: z.enum(['en', 'fr']).optional(),
 }).strict();
 export const reflectSchema = z.object({ journal_id: uuid, lang: z.enum(['en', 'fr']).optional() }).strict();
+
+// ---- group savings
+export const createSavingsGroupSchema = z.object({
+  name: z.string().trim().min(2).max(80), contribution_amount: z.number().int().positive().max(10_000_000),
+  frequency: z.enum(['daily', 'weekly', 'monthly']), start_date: isoDate, end_date: isoDate,
+  hide_amounts: z.boolean().default(false), lock_accepted: z.literal(true),
+}).strict().refine((value) => value.end_date >= value.start_date, { message: 'End date must be after the start date', path: ['end_date'] });
+export const joinSavingsGroupSchema = z.object({ invite_code: z.string().trim().min(8).max(16), lock_accepted: z.literal(true) }).strict();
+export const groupContributionSchema = z.object({ due_on: isoDate }).strict();
+export const groupNudgeSchema = z.object({ recipient_id: uuid }).strict();

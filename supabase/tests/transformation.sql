@@ -1,0 +1,14 @@
+begin;
+select plan(10);
+select has_table('public','transformation_areas','areas table exists');
+select has_table('public','transformation_behaviors','behaviors table exists');
+select has_table('public','transformation_events','events table exists');
+select has_table('public','transformation_checkins','check-ins table exists');
+select policies_are('public','transformation_areas',array['transformation_areas_own'],'areas have owner policy');
+select policies_are('public','transformation_behaviors',array['transformation_behaviors_own'],'behaviors have owner policy');
+select policies_are('public','transformation_events',array['transformation_events_own'],'events have owner policy');
+select policies_are('public','transformation_checkins',array['transformation_checkins_own'],'check-ins have owner policy');
+select is((select relrowsecurity from pg_class where oid='public.transformation_areas'::regclass),true,'areas use RLS');
+select is((select relrowsecurity from pg_class where oid='public.transformation_events'::regclass),true,'events use RLS');
+select * from finish();
+rollback;

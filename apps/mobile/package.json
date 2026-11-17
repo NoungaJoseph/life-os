@@ -50,6 +50,8 @@
   "devDependencies": {
     "@types/react": "~19.3.0",
     "babel-preset-expo": "^58.0.23",
+    "eslint": "^9.39.5",
+    "eslint-config-expo": "~58.0.4",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3"
   },
@@ -59,7 +61,8 @@
     "audit:i18n": "node scripts/audit-i18n.mjs",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "lint": "expo lint"
   },
   "private": true
 }

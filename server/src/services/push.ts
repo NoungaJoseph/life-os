@@ -1,6 +1,7 @@
 import { adminClient } from '../config/supabase';
 import { logger } from '../utils/logger';
 import { pickDue, PrefRow, ReminderRow, todayFor } from './reminders';
+import { contributionDates } from './group-savings';
 
 const EXPO_PUSH = 'https://exp.host/--/api/v2/push/send';
 const DEFAULT_PREFS: PrefRow = { quiet_start: '21:30', quiet_end: '07:00', max_per_day: 6, push_enabled: true };
@@ -40,7 +41,23 @@ export async function dispatchDueReminders(now = new Date()): Promise<number> {
   return sent;
 }
 
+/** Sends one bilingual reminder on the day before a group contribution is due and releases matured shares. */
+export async function dispatchGroupSavings(now = new Date()): Promise<number> {
+  await adminClient.rpc('release_due_group_savings', {});
+  const tomorrow = new Date(now); tomorrow.setUTCDate(tomorrow.getUTCDate() + 1); const dueOn = tomorrow.toISOString().slice(0, 10);
+  const groups = await adminClient.from('savings_groups').select('*').eq('status','active').lte('start_date',dueOn).gte('end_date',dueOn);
+  const dueGroups=(groups.data??[]).filter((g:any)=>contributionDates(g.start_date,g.end_date,g.frequency).includes(dueOn)); if(!dueGroups.length)return 0;
+  const members=await adminClient.from('savings_group_members').select('*').in('group_id',dueGroups.map((g:any)=>g.id)).is('left_at',null);let sent=0;
+  for(const member of members.data??[]){
+    const paid=await adminClient.from('savings_group_contributions').select('id').eq('member_id',member.id).eq('due_on',dueOn).maybeSingle();if(paid.data)continue;
+    const claim=await adminClient.from('savings_group_reminder_deliveries').insert({member_id:member.id,due_on:dueOn});if(claim.error)continue;
+    const [profile,tokens]=await Promise.all([adminClient.from('profiles').select('language').eq('id',member.user_id).maybeSingle(),adminClient.from('push_tokens').select('token').eq('user_id',member.user_id)]);const group=dueGroups.find((g:any)=>g.id===member.group_id);const french=profile.data?.language==='fr';
+    const payload=(tokens.data??[]).map((token:any)=>({to:token.token,title:'MY LIFE OS',body:french?`Votre épargne « ${group.name} » est prévue demain.`:`Your “${group.name}” savings contribution is due tomorrow.`,sound:'default',data:{kind:'group_savings',groupId:group.id}}));if(!payload.length)continue;
+    try{const response=await fetch(EXPO_PUSH,{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify(payload)});if(response.ok)sent++;}catch{logger.warn('group savings push network error');}
+  }return sent;
+}
+
 export function startScheduler() {
-  const t = setInterval(() => { dispatchDueReminders().catch(() => logger.error('scheduler tick failed')); }, 60_000);
+  const t = setInterval(() => { Promise.all([dispatchDueReminders(),dispatchGroupSavings()]).catch(() => logger.error('scheduler tick failed')); }, 60_000);
   t.unref();
 }

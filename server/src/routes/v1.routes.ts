@@ -22,6 +22,8 @@ import { plannerRouter } from './planner.routes';
 import { smartRouter } from './smart.routes';
 import { modulesRouter } from './modules.routes';
 import { walletRouter } from './wallet.routes';
+import { groupsRouter } from './groups.routes';
+import { transformationRouter } from './transformation.routes';
 
 export const v1Router = Router();
 
@@ -29,6 +31,8 @@ v1Router.use(requireAuth);
 v1Router.use(deviceSession);
 v1Router.use(securityRouter);
 v1Router.use(walletRouter);
+v1Router.use(groupsRouter);
+v1Router.use(transformationRouter);
 
 // Profile
 v1Router.get('/profile', asyncHandler(async (req, res) => {

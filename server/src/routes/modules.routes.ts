@@ -153,7 +153,9 @@ modulesRouter.put('/notification-preferences', validate(prefsBody), asyncHandler
 
 // ---- Privacy: export everything, delete the account
 const EXPORT_TABLES = ['life_visions', 'user_life_areas', 'goals', 'goal_milestones', 'tasks', 'habits', 'habit_completions', 'journal_entries',
-  ...resources.map((r) => r.table).filter((t) => t !== 'workouts'), 'weekly_reviews', 'monthly_reviews', 'notification_preferences', 'debt_payments'];
+  ...resources.map((r) => r.table).filter((t) => t !== 'workouts'), 'weekly_reviews', 'monthly_reviews', 'notification_preferences', 'debt_payments',
+  'wallets', 'ledger_accounts', 'transactions', 'payment_requests', 'vault_settings', 'release_requests', 'money_audit_log',
+  'savings_group_members', 'savings_group_contributions', 'transformation_areas', 'transformation_behaviors', 'transformation_events', 'transformation_checkins'];
 modulesRouter.get('/me/export', asyncHandler(async (req, res) => {
   const out: Record<string, unknown> = { exported_at: new Date().toISOString() };
   const prof = await req.db!.from('profiles').select('*').eq('id', req.userId!).maybeSingle();
@@ -165,6 +167,13 @@ modulesRouter.get('/me/export', asyncHandler(async (req, res) => {
   }
   const own = await req.db!.from('workouts').select('*').eq('user_id', req.userId!);
   out.workouts = own.data;
+  const [createdGroups, sentNudges, receivedNudges] = await Promise.all([
+    req.db!.from('savings_groups').select('*').eq('creator_id', req.userId!),
+    req.db!.from('savings_group_nudges').select('*').eq('sender_id', req.userId!),
+    req.db!.from('savings_group_nudges').select('*').eq('recipient_id', req.userId!),
+  ]);
+  out.savings_groups_created = createdGroups.data;
+  out.savings_group_nudges = [...(sentNudges.data ?? []), ...(receivedNudges.data ?? [])].filter((row, index, all) => all.findIndex((item) => item.id === row.id) === index);
   res.setHeader('Content-Disposition', 'attachment; filename="my-life-os-export.json"');
   ok(res, out);
 }));

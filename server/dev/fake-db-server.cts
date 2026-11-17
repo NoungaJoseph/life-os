@@ -48,6 +48,8 @@ const walletId=uid(), walletAccountId=uid(), clearingId=uid();
 db.wallets=[{id:walletId,user_id:U,currency:'XAF',status:'active',daily_limit:500000,created_at:new Date().toISOString()}];
 db.ledger_accounts=[{id:walletAccountId,user_id:U,wallet_id:walletId,code:'wallet',kind:'wallet',currency:'XAF',balance:0,locked:false},{id:clearingId,user_id:null,wallet_id:null,code:'provider:sandbox',kind:'provider_clearing',currency:'XAF',balance:0,locked:false}];
 db.transactions=[];db.ledger_entries=[];db.payment_requests=[];db.payment_webhook_events=[];db.vault_settings=[];db.money_audit_log=[];
+db.savings_groups=[];db.savings_group_members=[];db.savings_group_contributions=[];db.savings_group_nudges=[];db.savings_group_reminder_deliveries=[];
+db.transformation_areas=[{id:'99999999-9999-4999-8999-999999999998',user_id:OTHER,category:'health',title:'PRIVATE OTHER USER AREA',current_self:'private',target_self:'private',reason:''}];db.transformation_behaviors=[];db.transformation_events=[];db.transformation_checkins=[];
 
 const wd = (d: string) => dates.weekday(d);
 const mkHabit = (o: any) => ({ id: uid(), user_id: U, goal_id: null, description: null, frequency: 'daily', days_of_week: null, target_per_period: 1,
@@ -127,6 +129,10 @@ const DEFAULTS: Record<string, () => any> = {
   ledger_accounts: () => ({ balance: 0, locked: false, metadata: {} }),
   payment_requests: () => ({ status: 'pending', provider_reference: null, transaction_id: null, failure_code: null, metadata: {} }),
   vault_settings: () => ({ emergency_share: 20, lock_accepted_at: null }),
+  savings_groups: () => ({ status: 'active', hide_amounts: false }),
+  savings_group_members: () => ({ left_at: null, released_at: null }),
+  transformation_behaviors: () => ({ started_on: today }),
+  transformation_events: () => ({ occurred_at: new Date().toISOString() }),
 };
 class Q {
   op = 'select'; payload: any; filters: ((r: any) => boolean)[] = []; mode: 'many' | 'single' | 'maybe' = 'many';
@@ -255,6 +261,13 @@ const fakeAdmin = {
       const tx={id:uid(),user_id:args.p_user,wallet_id:walletId,idempotency_key:args.p_idempotency_key,kind:args.p_kind,status:'succeeded',amount:args.p_amount,currency:'XAF',metadata:args.p_metadata??{},created_at:new Date().toISOString()};db.transactions.push(tx);
       for(const e of args.p_entries){const a=db.ledger_accounts.find((x)=>x.id===e.account_id);a.balance+=e.amount;db.ledger_entries.push({id:uid(),transaction_id:tx.id,account_id:e.account_id,amount:e.amount,created_at:new Date().toISOString()});}return{data:tx,error:null};
     }
+    if(name==='contribute_group'){
+      const group=db.savings_groups.find((g)=>g.id===args.p_group&&g.status==='active');const member=db.savings_group_members.find((m)=>m.group_id===args.p_group&&m.user_id===args.p_user&&!m.left_at);if(!group||!member)return{data:null,error:{message:'Group not found'}};
+      const existing=db.savings_group_contributions.find((c)=>c.member_id===member.id&&c.due_on===args.p_due);if(existing)return{data:{contribution:existing,transaction:db.transactions.find((t)=>t.id===existing.transaction_id)},error:null};
+      const txResult=await fakeAdmin.rpc('post_ledger_transaction',{p_user:args.p_user,p_idempotency_key:args.p_key,p_kind:'group_contribution',p_amount:group.contribution_amount,p_entries:[{account_id:walletAccountId,amount:-group.contribution_amount},{account_id:member.share_account_id,amount:group.contribution_amount}],p_metadata:{group_id:group.id,due_on:args.p_due}});if(txResult.error)return txResult;
+      const contribution={id:uid(),group_id:group.id,member_id:member.id,user_id:args.p_user,due_on:args.p_due,amount:group.contribution_amount,transaction_id:txResult.data.id,paid_at:new Date().toISOString(),created_at:new Date().toISOString()};db.savings_group_contributions.push(contribution);return{data:{contribution,transaction:txResult.data},error:null};
+    }
+    if(name==='release_due_group_savings')return{data:0,error:null};
     killedAuthSessions.push(`${name}:${args.p_session ?? 'others-keep-' + args.p_keep}`); return { data: null, error: null };
   },
   auth: { admin: {

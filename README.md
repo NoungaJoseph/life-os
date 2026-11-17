@@ -128,9 +128,19 @@ The Goal Vault requires a bilingual lock explanation and explicit consent before
 
 Step 3 wallet, Vault, and consent screens were smoke-tested in English and French, light and dark themes. Captures are stored in `docs/screenshots/step3/`.
 
+## Group savings
+
+Group savings are deliberately non-rotating: every member contributes from their wallet into a separate locked ledger share and receives only their own full savings after the creator's required end date. Creators choose daily, weekly, or monthly contributions, can hide exact member amounts, and share a random invite code. Members must accept the lock explanation when creating or joining, may catch up missed dates, and can leave only before their first contribution. Funded groups cannot be deleted.
+
+With the scheduler enabled, the API sends a bilingual push reminder the day before each due date and atomically releases matured member shares back to their wallets. Group chat is intentionally omitted; members see progress percentages and can send one gentle nudge per person per day. Apply `supabase/migrations/20261116000002_group_savings.sql` after the wallet migration. Step 4 English/French light/dark captures are stored in `docs/screenshots/step4/`.
+
+## Personal transformation (Step 5)
+
+Apply `supabase/migrations/20261117000001_transformation.sql` after the group savings migration. The mobile Profile screen opens a private transformation workspace for relationships, habits to leave behind, health, finance and character. Each area records the current and target self, a personal reason, concrete build/quit behaviors, optional links to an existing goal or habit, and one 1–10 check-in per week. Quit behaviors keep a current and best streak; an urge opens a one-minute pause and a private trigger note, while a relapse resets only the current streak. The weekly score history includes a simple line chart. All four tables have owner-scoped RLS and cascade on account deletion; the account export includes their rows. The insights engine receives only aggregate improvement counts, and the AI coach receives only those aggregate counts, never private self descriptions or trigger notes. EN/FR light/dark visual captures of the list, create form and detail are in `docs/screenshots/step5/`.
+
 ## Run order for Supabase
 
-SQL editor: run migrations in filename order through `20261116000001_wallet_ledger.sql`, then run `seed.sql`. Fill `server/.env` from `.env.example`.
+SQL editor: run migrations in filename order through `20261117000001_transformation.sql`, then run `seed.sql`. Fill `server/.env` from `.env.example`.
 
 ## Web app
 
@@ -158,7 +168,7 @@ eas build --profile preview --platform android    # installable APK
 
 GitHub Actions runs `.github/workflows/ci.yml` for every pull request and every push to `main`:
 
-- **Server:** clean install, TypeScript check, unit tests, the 149-check fake-database API suite, and production build.
+- **Server:** clean install, TypeScript check, unit tests, the 172-check fake-database API suite, and production build.
 - **Mobile:** clean install, TypeScript check, i18n tests, untranslated-copy audit, and an Expo web export.
 - CI uses Node.js 20, matching the server's supported runtime.
 

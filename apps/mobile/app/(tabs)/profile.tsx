@@ -68,6 +68,7 @@ export default function ProfileScreen() {
       <Button title={tr('profile.journal')} variant="ghost" icon="book-outline" onPress={() => router.push('/journal')} />
       <Button title={tr('profile.coach')} variant="ghost" icon="sparkles-outline" onPress={() => router.push('/coach')} />
       <Button title={tr('profile.review')} variant="ghost" icon="calendar-number-outline" onPress={() => router.push('/review')} />
+      <Button title={tr('transformation.title')} variant="ghost" icon="leaf-outline" onPress={() => router.push('/transformation')} />
       <Button title={tr('profile.finance')} variant="ghost" icon="wallet-outline" onPress={() => router.push('/finance')} />
       <Button title={tr('wallet.profileButton')} variant="ghost" icon="card-outline" onPress={() => router.push('/wallet')} />
       <Button title={tr('profile.settings')} variant="ghost" icon="settings-outline" onPress={() => router.push('/settings')} />

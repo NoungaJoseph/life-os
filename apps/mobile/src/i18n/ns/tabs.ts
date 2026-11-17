@@ -98,6 +98,7 @@ export const tabsEn = {
     peak: { title: 'Your productivity pattern', body: 'You complete the most tasks on {{weekday}}, usually around {{hour}}. Protect that time for your hardest work.' },
     late: { title: 'Deadlines are slipping', body: 'Finished tasks land about {{days}} days after their due date. Try setting due dates later, or planning fewer tasks per day.' },
     taskWin: { title: '{{pct}}% of tasks completed', body: 'Over the last {{days}} days you finished {{done}} of {{due}} due tasks.' },
+    transformationProgress: { title: 'Your reflection shows progress', body: '{{count}} personal areas improved since the previous check-in. Notice what helped.' },
     neglected: { title: '{{name}} is being neglected', body: 'Very little of your recent activity supports this pillar. Add one small habit or task there this week.' },
   },
   taxonomy: {
@@ -219,6 +220,7 @@ export const tabsFr: typeof tabsEn = {
     peak: { title: 'Votre rythme de productivité', body: 'Vous terminez le plus de tâches le {{weekday}}, généralement vers {{hour}}. Protégez ce créneau pour votre travail le plus exigeant.' },
     late: { title: 'Les échéances glissent', body: "Les tâches terminées le sont environ {{days}} jours après leur échéance. Essayez de fixer des échéances plus tard, ou de planifier moins de tâches par jour." },
     taskWin: { title: '{{pct}} % des tâches accomplies', body: 'Ces {{days}} derniers jours, vous avez terminé {{done}} tâches sur {{due}}.' },
+    transformationProgress: { title: 'Votre bilan montre des progrès', body: '{{count}} domaines personnels ont progressé depuis le bilan précédent. Remarquez ce qui vous a aidé.' },
     neglected: { title: '{{name}} est négligé', body: "Très peu de votre activité récente soutient ce pilier. Ajoutez une petite habitude ou une tâche à ce sujet cette semaine." },
   },
   taxonomy: {

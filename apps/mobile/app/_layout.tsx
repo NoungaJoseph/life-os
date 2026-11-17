@@ -58,7 +58,7 @@ function Gate() {
   const lock = useLock();
   const chosen = useChosenLanguage();
   const group = segments[0] as string | undefined;
-  const visualTutorial = process.env.EXPO_PUBLIC_VISUAL_TESTS === '1' && ['tutorial','wallet','vault'].includes(group ?? '');
+  const visualTutorial = process.env.EXPO_PUBLIC_VISUAL_TESTS === '1' && ['tutorial','wallet','vault','groups','group','group-create','group-join','transformation'].includes(group ?? '');
   const done = profile.data?.onboarding_completed;
   const [tourSeen, setTourSeen] = useState<boolean | undefined>(undefined);
 

@@ -46,6 +46,7 @@ export function buildCoachContext(s: Snapshot): string {
     `Active goals:\n${goals.join('\n') || '- none yet'}`,
     `Tasks: ${b.open_today} open today or overdue, ${b.overdue_open} overdue, usually finishes ${b.avg_daily_completions}/day, completion rate ${b.completion_rate === null ? 'unknown' : Math.round(b.completion_rate * 100) + '%'}.`,
     `Life balance (last 14 days): ${bal || 'no data'}.`,
+    `Personal transformation: ${s.transformation?.areaCount ?? 0} private areas; ${s.transformation?.recentImprovement ?? 0} improved since the previous weekly check-in. Do not infer sensitive details.`,
     `Detected insights:\n${s.insights.slice(0, 6).map((i) => `- ${i.title}: ${i.body}`).join('\n') || '- none'}`,
   ].join('\n');
 }

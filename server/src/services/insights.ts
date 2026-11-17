@@ -251,9 +251,13 @@ const hourLabel = (h: number) => `${String(h).padStart(2, '0')}:00`;
 export interface InsightInput {
   today: string; habits: HabitRow[]; habitStatsById: Record<string, HabitStats>;
   goals: GoalRow[]; projections: Record<string, GoalProjection>; behavior: TaskBehavior; balance: ReturnType<typeof lifeBalance>;
+  transformation?: { areaCount: number; recentImprovement: number };
 }
 export function buildInsights(i: InsightInput): Insight[] {
   const out: Insight[] = [];
+  if (i.transformation && i.transformation.recentImprovement > 0) out.push({ id: 'transformation-progress', kind: 'win', priority: 52,
+    code: 'transformationProgress', params: { count: i.transformation.recentImprovement },
+    title: 'Your reflection shows progress', body: `${i.transformation.recentImprovement} personal area${i.transformation.recentImprovement === 1 ? '' : 's'} improved since the previous check-in. Notice what helped.` });
 
   for (const h of i.habits) {
     const s = i.habitStatsById[h.id];
