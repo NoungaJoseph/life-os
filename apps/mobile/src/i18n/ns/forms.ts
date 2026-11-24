@@ -3,7 +3,7 @@ export const formsEn = {
   newGoal: {
     title: 'New goal', subtitle: 'Every goal should serve something bigger', goal: 'Goal', goalPlaceholder: 'e.g. Save an emergency fund',
     level: 'Level', measure: 'How will you measure it?', targetAmount: 'Target amount', targetNumber: 'Target number',
-    targetDate: 'Target date (YYYY-MM-DD, optional)', parent: 'Part of a bigger goal? (optional)', pillar: 'Life pillar (optional)', area: 'Life area (optional)',
+    targetDate: 'Target date (optional)', parent: 'Part of a bigger goal? (optional)', pillar: 'Life pillar (optional)', area: 'Life area (optional)',
     why: 'Why does it matter? (optional)', create: 'Create goal',
     types: { long_term: 'Long-term', annual: 'Annual', quarterly: 'Quarterly', monthly: 'Monthly', weekly: 'Weekly', daily: 'Daily' },
     measures: { percentage: 'Percentage', numeric: 'Number', currency: 'Money', milestones: 'Milestones' },
@@ -19,7 +19,7 @@ export const formsEn = {
   },
   newTask: {
     title: 'New task', what: 'What needs doing?', when: 'When', today: 'Today', tomorrow: 'Tomorrow', nextWeek: 'Next week', noDate: 'No date',
-    orDate: 'Or enter a date (YYYY-MM-DD)', priority: 'Priority', goal: 'Supports which goal? (optional)', notes: 'Notes (optional)', add: 'Add task',
+    orDate: 'Or choose a date', priority: 'Priority', goal: 'Supports which goal? (optional)', notes: 'Notes (optional)', add: 'Add task',
     priorities: { low: 'Low', medium: 'Medium', high: 'High' },
     errors: { title: 'Give the task a name', date: 'Use YYYY-MM-DD' },
   },
@@ -37,7 +37,7 @@ export const formsEn = {
     goalsIntro: 'Start with one to three goals. You can break them into monthly, weekly and daily steps later.',
     goalN: 'Goal {{n}}', addGoal: 'Add another goal',
     goalTypes: { long_term: 'Long-term', annual: 'This year', monthly: 'This month' },
-    workStart: 'Work starts (HH:MM)', workEnd: 'Work ends (HH:MM)', readingTime: 'Preferred reading time', exerciseDays: 'Exercise days', exerciseTime: 'Preferred exercise time',
+    workStart: 'Work starts', workEnd: 'Work ends', readingTime: 'Preferred reading time', exerciseDays: 'Exercise days', exerciseTime: 'Preferred exercise time',
     days: { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' },
     errors: { name: 'Please enter a name.', time: 'Use 24-hour times like 08:30.' },
   },
@@ -84,7 +84,7 @@ export const formsFr: typeof formsEn = {
   newGoal: {
     title: 'Nouvel objectif', subtitle: "Chaque objectif doit servir quelque chose de plus grand", goal: 'Objectif', goalPlaceholder: "ex. Constituer un fonds d'urgence",
     level: 'Niveau', measure: 'Comment allez-vous le mesurer ?', targetAmount: 'Montant cible', targetNumber: 'Nombre cible',
-    targetDate: 'Date cible (AAAA-MM-JJ, facultatif)', parent: "Fait partie d'un objectif plus grand ? (facultatif)", pillar: 'Pilier de vie (facultatif)', area: 'Domaine de vie (facultatif)',
+    targetDate: 'Date cible (facultatif)', parent: "Fait partie d'un objectif plus grand ? (facultatif)", pillar: 'Pilier de vie (facultatif)', area: 'Domaine de vie (facultatif)',
     why: 'Pourquoi est-ce important ? (facultatif)', create: "Créer l'objectif",
     types: { long_term: 'Long terme', annual: 'Annuel', quarterly: 'Trimestriel', monthly: 'Mensuel', weekly: 'Hebdomadaire', daily: 'Quotidien' },
     measures: { percentage: 'Pourcentage', numeric: 'Nombre', currency: 'Argent', milestones: 'Étapes' },
@@ -100,7 +100,7 @@ export const formsFr: typeof formsEn = {
   },
   newTask: {
     title: 'Nouvelle tâche', what: 'Que faut-il faire ?', when: 'Quand', today: "Aujourd'hui", tomorrow: 'Demain', nextWeek: 'Semaine prochaine', noDate: 'Sans date',
-    orDate: 'Ou saisissez une date (AAAA-MM-JJ)', priority: 'Priorité', goal: 'Pour quel objectif ? (facultatif)', notes: 'Notes (facultatif)', add: 'Ajouter la tâche',
+    orDate: 'Ou choisissez une date', priority: 'Priorité', goal: 'Pour quel objectif ? (facultatif)', notes: 'Notes (facultatif)', add: 'Ajouter la tâche',
     priorities: { low: 'Basse', medium: 'Moyenne', high: 'Haute' },
     errors: { title: 'Donnez un nom à la tâche', date: 'Utilisez AAAA-MM-JJ' },
   },
@@ -118,7 +118,7 @@ export const formsFr: typeof formsEn = {
     goalsIntro: 'Commencez avec un à trois objectifs. Vous pourrez les décomposer plus tard en étapes mensuelles, hebdomadaires et quotidiennes.',
     goalN: 'Objectif {{n}}', addGoal: 'Ajouter un autre objectif',
     goalTypes: { long_term: 'Long terme', annual: 'Cette année', monthly: 'Ce mois-ci' },
-    workStart: 'Début du travail (HH:MM)', workEnd: 'Fin du travail (HH:MM)', readingTime: 'Heure de lecture préférée', exerciseDays: "Jours d'exercice", exerciseTime: "Heure d'exercice préférée",
+    workStart: 'Début du travail', workEnd: 'Fin du travail', readingTime: 'Heure de lecture préférée', exerciseDays: "Jours d'exercice", exerciseTime: "Heure d'exercice préférée",
     days: { mon: 'Lun', tue: 'Mar', wed: 'Mer', thu: 'Jeu', fri: 'Ven', sat: 'Sam', sun: 'Dim' },
     errors: { name: 'Veuillez saisir un prénom.', time: "Utilisez l'heure au format 24 h, par exemple 08:30." },
   },

@@ -7,10 +7,12 @@ import { ScrollView, View, useWindowDimensions } from 'react-native';
 import { BalanceBar, GoalRow, InsightCard } from '../../src/components/domain';
 import { FirstVisitTip } from '../../src/components/Tutorial';
 import {
-  Card, Check, EmptyState, ErrorState, FadeIn, Hero, Loading, Pill, Press, ProgressBar, ProgressRing, Screen, SectionHeader, Text,
+  Card, Check, EmptyState, ErrorState, FadeIn, Hero, IconBadge, Loading, Pill, Press, ProgressBar, ProgressRing, Screen, SectionHeader, Text,
 } from '../../src/components/ui';
 import { prettyDate } from '../../src/lib/dates';
 import { errorMessage } from '../../src/lib/errors';
+import { useEveningCheckinState } from '../../src/lib/eveningCheckin';
+import { isInEveningWindow, localDateKey } from '../../src/lib/eveningCheckinLogic';
 import { useDashboard, useToggleHabit, useToggleTask } from '../../src/lib/hooks';
 import { spacing } from '../../src/theme/tokens';
 import { useTheme } from '../../src/theme/useTheme';
@@ -23,11 +25,15 @@ export default function Home() {
   const q = useDashboard();
   const toggleTask = useToggleTask();
   const toggleHabit = useToggleHabit();
+  const evening = useEveningCheckinState();
 
   if (q.isLoading) return <Loading />;
   if (q.error || !q.data) return <Screen><ErrorState message={q.error ? errorMessage(q.error, tr) : tr('home.loadError')} onRetry={() => void q.refetch()} /></Screen>;
   const d = q.data;
-  const hour = new Date().getHours();
+  const now = new Date();
+  const hour = now.getHours();
+  const eveningDone = evening.doneDate === localDateKey(now);
+  const eveningOpen = isInEveningWindow(now, evening.time);
   const hello = tr(hour < 12 ? 'home.morning' : hour < 18 ? 'home.afternoon' : 'home.evening');
   const intentions = tr('home.intentions', { returnObjects: true }) as unknown as string[];
   const intention = intentions[Math.floor(Date.now() / 86_400_000) % intentions.length];
@@ -80,6 +86,29 @@ export default function Home() {
           </ScrollView>
         </FadeIn>
       )}
+
+      <FadeIn delay={100}>
+        <Card onPress={() => router.push('/evening-checkin')} className="flex-row items-center gap-3">
+          <IconBadge icon={eveningDone ? 'checkmark-circle' : 'moon'} tone={eveningDone ? 'success' : eveningOpen ? 'accent' : 'info'} size={40} />
+          <View className="flex-1">
+            <Text weight="600">{tr('home.rundownTitle')}</Text>
+            <Text size="xs" muted>
+              {eveningDone
+                ? tr('home.rundownDone')
+                : eveningOpen
+                  ? tr('home.rundownOpen')
+                  : tr('home.rundownSoon', { time: evening.time })}
+            </Text>
+          </View>
+          {eveningDone ? (
+            <Pill label={tr('home.rundownDonePill')} tone="success" />
+          ) : eveningOpen ? (
+            <Pill label={tr('home.rundownNowPill')} tone="accent" />
+          ) : (
+            <Ionicons name="chevron-forward" size={18} color={t.textSecondary} />
+          )}
+        </Card>
+      </FadeIn>
 
       <FadeIn delay={120}>
         <Press onPress={() => router.push('/coach')}>

@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DateField } from '../src/components/DateField';
+import { MoneyField } from '../src/components/MoneyField';
 import { View } from 'react-native';
 import { Button, Card, Chip, EmptyState, ErrorState, ErrorText, Field, Header, Hero, Loading, Pill, ProgressBar, Row, Screen, SectionHeader, Segmented, StatTile, Text, success } from '../src/components/ui';
 import { currencyLabel, formatNumber } from '../src/i18n';
 import { api } from '../src/lib/api';
+import { parseMoneyInput } from '../src/lib/moneyInput';
 import { spacing } from '../src/theme/tokens';
 
 type Item = { id: string; name: string; creditor: string | null; direction: string; currency: string; status: string; principal: number; paid: number; remaining: number; pct: number; due_date: string | null; overdue: boolean; payments_left: number | null };
@@ -23,16 +26,17 @@ export default function Debts() {
 
   const add = useMutation({
     mutationFn: () => {
-      const principal = Number(f.principal.replace(/,/g, ''));
+      const principal = parseMoneyInput(f.principal);
       if (!f.name.trim()) throw new Error(t('debts.nameIt'));
       if (!(principal > 0)) throw new Error(t('debts.amountAboveZero'));
+      const minPay = parseMoneyInput(f.min_payment);
       return api('/debts', { method: 'POST', body: { name: f.name.trim(), direction: dir, principal,
-        ...(f.creditor.trim() ? { creditor: f.creditor.trim() } : {}), ...(f.min_payment ? { min_payment: Number(f.min_payment) } : {}), ...(f.due_date ? { due_date: f.due_date } : {}) } });
+        ...(f.creditor.trim() ? { creditor: f.creditor.trim() } : {}), ...(f.min_payment && !Number.isNaN(minPay) ? { min_payment: minPay } : {}), ...(f.due_date ? { due_date: f.due_date } : {}) } });
     },
     onSuccess: () => { setF({ name: '', creditor: '', principal: '', min_payment: '', due_date: '' }); done(); }, onError: (e) => setErr((e as Error).message),
   });
   const payM = useMutation({
-    mutationFn: () => { const n = Number(pay!.amount.replace(/,/g, '')); if (!(n > 0)) throw new Error(t('debts.paymentAboveZero')); return api('/debt-payments', { method: 'POST', body: { debt_id: pay!.id, amount: n } }); },
+    mutationFn: () => { const n = parseMoneyInput(pay!.amount); if (!(n > 0)) throw new Error(t('debts.paymentAboveZero')); return api('/debt-payments', { method: 'POST', body: { debt_id: pay!.id, amount: n } }); },
     onSuccess: () => { setPay(null); done(); }, onError: (e) => setErr((e as Error).message),
   });
   const close = useMutation({ mutationFn: (id: string) => api(`/debts/${id}`, { method: 'PATCH', body: { status: 'paid' } }), onSuccess: done });
@@ -61,7 +65,7 @@ export default function Debts() {
             <Text size="sm" muted>{t('debts.leftOf', { remaining: fmt(i.remaining), principal: fmt(i.principal), currency: currencyLabel(i.currency) })}{i.creditor ? ` · ${i.creditor}` : ''}{i.due_date ? ` · ${t('debts.due', { date: i.due_date })}` : ''}{i.payments_left ? ` · ${t('debts.paymentsLeft', { count: i.payments_left })}` : ''}</Text>
             {i.status === 'active' && (pay?.id === i.id ? (
               <View className="gap-[8px]">
-                <Field label={t('debts.paymentAmount')} value={pay.amount} onChangeText={(v) => setPay({ id: i.id, amount: v })} keyboardType="decimal-pad" autoFocus />
+                <MoneyField allowDecimal label={t('debts.paymentAmount')} value={pay.amount} onChangeText={(v) => setPay({ id: i.id, amount: v })} autoFocus />
                 <Row><View className="flex-1"><Button title={t('debts.record')} loading={payM.isPending} onPress={() => payM.mutate()} /></View><View style={{ flex: 1 }}><Button title={t('common.cancel')} variant="ghost" onPress={() => setPay(null)} /></View></Row>
               </View>
             ) : (
@@ -74,9 +78,9 @@ export default function Debts() {
         <Segmented value={dir} onChange={setDir} options={[{ value: 'owed_by_me', label: t('debts.iOwe') }, { value: 'owed_to_me', label: t('debts.owedToMe') }]} />
         <Field label={t('debts.name')} value={f.name} onChangeText={(v) => setF({ ...f, name: v })} placeholder={t('debts.namePlaceholder')} />
         <Field label={t('debts.who')} value={f.creditor} onChangeText={(v) => setF({ ...f, creditor: v })} />
-        <Field label={t('debts.amount')} value={f.principal} onChangeText={(v) => setF({ ...f, principal: v })} keyboardType="decimal-pad" />
-        <Field label={t('debts.usualPayment')} value={f.min_payment} onChangeText={(v) => setF({ ...f, min_payment: v })} keyboardType="decimal-pad" />
-        <Field label={t('debts.dueDate')} value={f.due_date} onChangeText={(v) => setF({ ...f, due_date: v })} autoCapitalize="none" />
+        <MoneyField allowDecimal label={t('debts.amount')} value={f.principal} onChangeText={(v) => setF({ ...f, principal: v })} />
+        <MoneyField allowDecimal label={t('debts.usualPayment')} value={f.min_payment} onChangeText={(v) => setF({ ...f, min_payment: v })} />
+        <DateField label={t('debts.dueDate')} value={f.due_date} onChange={(v) => setF({ ...f, due_date: v })} />
         <ErrorText message={err} />
         <Button title={t('debts.addDebt')} loading={add.isPending} onPress={() => add.mutate()} />
       </Card>

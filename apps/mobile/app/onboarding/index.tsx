@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
+import { TimeField } from '../../src/components/TimeField';
 import { Button, Card, Chip, ErrorText, Field, Loading, Screen, Text } from '../../src/components/ui';
 import { api } from '../../src/lib/api';
 import { LifeArea, LifeVision, Pillar, Preferences, Profile, UserLifeArea } from '../../src/lib/types';
@@ -248,9 +249,9 @@ export default function Onboarding() {
 
       {step === 7 && (
         <>
-          <Field label={t('onboarding.workStart')} value={routine.work_start ?? ''} onChangeText={(v) => setPref('routine', { work_start: v })} placeholder="08:00" />
-          <Field label={t('onboarding.workEnd')} value={routine.work_end ?? ''} onChangeText={(v) => setPref('routine', { work_end: v })} placeholder="17:00" />
-          <Field label={t('onboarding.readingTime')} value={routine.reading_time ?? ''} onChangeText={(v) => setPref('routine', { reading_time: v })} placeholder="20:00" />
+          <TimeField label={t('onboarding.workStart')} value={routine.work_start ?? ''} onChange={(v) => setPref('routine', { work_start: v })} />
+          <TimeField label={t('onboarding.workEnd')} value={routine.work_end ?? ''} onChange={(v) => setPref('routine', { work_end: v })} />
+          <TimeField label={t('onboarding.readingTime')} value={routine.reading_time ?? ''} onChange={(v) => setPref('routine', { reading_time: v })} />
           <Text size="sm" weight="600">{t('onboarding.exerciseDays')}</Text>
           <Row>
             {DAYS.map(([d, key]) => {
@@ -261,7 +262,7 @@ export default function Onboarding() {
               );
             })}
           </Row>
-          <Field label={t('onboarding.exerciseTime')} value={routine.exercise_time ?? ''} onChangeText={(v) => setPref('routine', { exercise_time: v })} placeholder="06:30" />
+          <TimeField label={t('onboarding.exerciseTime')} value={routine.exercise_time ?? ''} onChange={(v) => setPref('routine', { exercise_time: v })} />
         </>
       )}
 

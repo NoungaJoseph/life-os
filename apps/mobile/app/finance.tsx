@@ -4,11 +4,13 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
-import { Button, Card, Chip, EmptyState, ErrorState, ErrorText, FadeIn, Field, Header, Hero, Loading, Pill, ProgressBar, Row, Screen, SectionHeader, StatTile, Text, success } from '../src/components/ui';
+import { MoneyField } from '../src/components/MoneyField';
+import { Button, Card, Chip, EmptyState, ErrorState, ErrorText, FadeIn, Header, Hero, Loading, Pill, ProgressBar, Row, Screen, SectionHeader, StatTile, Text, success } from '../src/components/ui';
 import { FirstVisitTip } from '../src/components/Tutorial';
 import { currencyLabel, currentLocale, formatNumber } from '../src/i18n';
 import { api } from '../src/lib/api';
 import { categoryLabel } from '../src/lib/modules';
+import { parseMoneyInput } from '../src/lib/moneyInput';
 import { spacing } from '../src/theme/tokens';
 
 type Summary = {
@@ -45,7 +47,7 @@ export default function Finance() {
   const [err, setErr] = useState<string | null>(null);
   const deposit = useMutation({
     mutationFn: (sign: 1 | -1) => {
-      const n = Number(amount.replace(/,/g, ''));
+      const n = parseMoneyInput(amount);
       if (!goal) throw new Error(t('finance.pickGoal'));
       if (!n || n <= 0) throw new Error(t('finance.amountAboveZero'));
       return api('/savings-transactions', { method: 'POST', body: { savings_goal_id: goal, amount: sign * n } });
@@ -115,11 +117,11 @@ export default function Finance() {
           <Card className="gap-[16px]">
             <Text weight="600">{t('finance.addOrWithdraw')}</Text>
             <Row>{s.savings.map((g) => <Chip key={g.id} label={g.name} selected={goal === g.id} onPress={() => setGoal(g.id)} />)}</Row>
-            <Field label={t('finance.amount')} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder={t('finance.amountPlaceholder')} />
+            <MoneyField allowDecimal label={t('finance.amount')} value={amount} onChangeText={setAmount} placeholder={t('finance.amountPlaceholder')} />
             <ErrorText message={err} />
             <Row gap={spacing.md}>
-              <View className="flex-1"><Button title={t('finance.deposit')} loading={deposit.isPending} onPress={() => deposit.mutate(1)} /></View>
-              <View className="flex-1"><Button title={t('finance.withdraw')} variant="ghost" onPress={() => deposit.mutate(-1)} /></View>
+              <View className="flex-1"><Button title={t('finance.deposit')} loading={deposit.isPending && deposit.variables === 1} disabled={deposit.isPending && deposit.variables !== 1} onPress={() => deposit.mutate(1)} /></View>
+              <View className="flex-1"><Button title={t('finance.withdraw')} variant="ghost" loading={deposit.isPending && deposit.variables === -1} disabled={deposit.isPending && deposit.variables !== -1} onPress={() => deposit.mutate(-1)} /></View>
             </Row>
           </Card>
         </>

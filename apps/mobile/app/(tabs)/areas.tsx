@@ -41,6 +41,7 @@ export default function Areas() {
       <Header title={tr('areas.title')} subtitle={tr('areas.subtitle')} />
 
       <SectionHeader title={tr('areas.tools')} />
+      <Card onPress={() => router.push('/savings')} className="flex-row items-center gap-[16px]"><IconBadge icon="wallet-outline" tone="success" /><View className="flex-1"><Text weight="600">{tr('savings.title')}</Text><Text size="sm" muted>{tr('savings.subtitle')}</Text></View></Card>
       <Card onPress={() => router.push('/finance')} className="flex-row items-center gap-[16px]">
         <IconBadge icon="stats-chart-outline" tone="accent" />
         <View className="flex-1"><Text weight="600">{tr('areas.financeTitle')}</Text><Text size="sm" muted>{tr('areas.financeBody')}</Text></View>

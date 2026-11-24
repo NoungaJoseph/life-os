@@ -3,10 +3,12 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Platform, Share, Switch, View } from 'react-native';
+import { TimeField } from '../src/components/TimeField';
 import { Button, Card, ErrorText, Field, Header, Loading, Screen, SectionHeader, Text, success } from '../src/components/ui';
 import { FirstVisitTip } from '../src/components/Tutorial';
 import { api } from '../src/lib/api';
 import { errorMessage } from '../src/lib/errors';
+import { setEveningCheckinPrefs, syncEveningCheckinNotification, useEveningCheckinState } from '../src/lib/eveningCheckin';
 import { enablePush } from '../src/lib/push';
 import { signOutDevice } from '../src/lib/signOut';
 import { useSession } from '../src/lib/session';
@@ -29,7 +31,15 @@ export default function Settings() {
   const [err, setErr] = useState<string | null>(null);
   const [confirm, setConfirm] = useState('');
   const [pushMsg, setPushMsg] = useState<string | null>(null);
-  const push = useMutation({ mutationFn: enablePush, onSuccess: (r) => setPushMsg(r.ok ? tr('settingsPage.pushDone') : tr(`ui.push.${r.reason}`)), onError: (e) => setPushMsg(errorMessage(e, tr)) });
+  const evening = useEveningCheckinState();
+  const push = useMutation({
+    mutationFn: enablePush,
+    onSuccess: (r) => {
+      setPushMsg(r.ok ? tr('settingsPage.pushDone') : tr(`ui.push.${r.reason}`));
+      if (r.ok) void syncEveningCheckinNotification(tr('eveningCheckin.notifTitle'), tr('eveningCheckin.notifBody'));
+    },
+    onError: (e) => setPushMsg(errorMessage(e, tr)),
+  });
   useEffect(() => { if (prefs.data) setP({ quiet_start: prefs.data.quiet_start.slice(0, 5), quiet_end: prefs.data.quiet_end.slice(0, 5), max: String(prefs.data.max_per_day), push: prefs.data.push_enabled }); }, [prefs.data]);
 
   const save = useMutation({
@@ -66,6 +76,7 @@ export default function Settings() {
     <Screen bottomPad={40}>
       <FirstVisitTip screen="settings" />
       <Header title={tr('settingsPage.title')} subtitle={tr('settingsPage.subtitle')} back />
+      <Button title={tr('guide.title')} variant="ghost" icon="help-circle-outline" onPress={() => router.push('/guide')} />
       <SectionHeader title={tr('tutorial.replay')} />
       <Card className="gap-3"><Text size="sm" muted>{tr('tutorial.replayHint')}</Text><Button title={tr('tutorial.replay')} variant="ghost" icon="refresh-outline" onPress={() => void replay()} /></Card>
       <SectionHeader title={tr('settingsPage.notifications')} />
@@ -75,9 +86,36 @@ export default function Settings() {
             <Text weight="600">{tr('settingsPage.allowReminders')}</Text>
             <Switch value={p.push} onValueChange={(v) => setP({ ...p, push: v })} trackColor={{ true: t.primary, false: t.border }} />
           </View>
-          <Field label={tr('settingsPage.quietStart')} value={p.quiet_start} onChangeText={(v) => setP({ ...p, quiet_start: v })} />
-          <Field label={tr('settingsPage.quietEnd')} value={p.quiet_end} onChangeText={(v) => setP({ ...p, quiet_end: v })} />
+          <TimeField label={tr('settingsPage.quietStart')} value={p.quiet_start} onChange={(v) => setP({ ...p, quiet_start: v })} required />
+          <TimeField label={tr('settingsPage.quietEnd')} value={p.quiet_end} onChange={(v) => setP({ ...p, quiet_end: v })} required />
           <Field label={tr('settingsPage.maxPerDay')} value={p.max} onChangeText={(v) => setP({ ...p, max: v })} keyboardType="number-pad" />
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1 pr-3">
+              <Text weight="600">{tr('settingsPage.eveningCheckin')}</Text>
+              <Text size="xs" muted>{tr('settingsPage.eveningCheckinHint')}</Text>
+            </View>
+            <Switch
+              value={evening.enabled}
+              onValueChange={(v) => {
+                void setEveningCheckinPrefs({ enabled: v }).then(() =>
+                  syncEveningCheckinNotification(tr('eveningCheckin.notifTitle'), tr('eveningCheckin.notifBody')),
+                );
+              }}
+              trackColor={{ true: t.primary, false: t.border }}
+            />
+          </View>
+          {evening.enabled && (
+            <TimeField
+              label={tr('settingsPage.eveningCheckinTime')}
+              value={evening.time}
+              onChange={(v) => {
+                void setEveningCheckinPrefs({ time: v }).then(() =>
+                  syncEveningCheckinNotification(tr('eveningCheckin.notifTitle'), tr('eveningCheckin.notifBody')),
+                );
+              }}
+              required
+            />
+          )}
           <Button title={tr('settingsPage.enablePush')} variant="ghost" loading={push.isPending} onPress={() => push.mutate()} />
           {pushMsg ? <Text size="sm" muted>{pushMsg}</Text> : <Text size="xs" muted>{tr('settingsPage.pushNeedsBuild')}</Text>}
           <Button title={tr('settingsPage.save')} loading={save.isPending} onPress={() => save.mutate()} />

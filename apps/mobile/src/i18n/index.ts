@@ -8,6 +8,7 @@ import { fr } from './fr';
 
 export type Lang = 'en' | 'fr';
 const KEY = 'mylifeos-lang';
+const CHOSEN_KEY = 'mylifeos-lang:chosen';
 
 const deviceLang = (): Lang => (Localization.getLocales()[0]?.languageCode === 'fr' ? 'fr' : 'en');
 
@@ -21,24 +22,24 @@ let chosen: Lang | null | undefined;
 const listeners = new Set<() => void>();
 const emit = (v: Lang | null) => { chosen = v; listeners.forEach((f) => f()); };
 
-/** Reads the saved language once at start-up, defaulting to the device language. */
-export async function loadLanguage(): Promise<Lang> {
+/** Older builds saved the device default without asking. Only a confirmed choice skips the picker. */
+export async function loadLanguage(): Promise<Lang | null> {
   let v: Lang = deviceLang();
+  let saved: Lang | null = null;
   try {
-    const raw = await AsyncStorage.getItem(KEY);
+    const [[, raw], [, confirmed], [, introSeen]] = await AsyncStorage.multiGet([KEY, CHOSEN_KEY, 'mylifeos:intro:seen']);
     if (raw === 'en' || raw === 'fr') {
       v = raw;
-    } else {
-      await AsyncStorage.setItem(KEY, v);
+      if (confirmed === '1' || introSeen === '1') saved = raw;
     }
     await i18n.changeLanguage(v);
   } catch { /* storage unavailable: fall back to the device language */ }
-  emit(v);
-  return v;
+  emit(saved);
+  return saved;
 }
 export async function setLanguage(l: Lang) {
   await i18n.changeLanguage(l);
-  try { await AsyncStorage.setItem(KEY, l); } catch { /* ignore */ }
+  try { await AsyncStorage.multiSet([[KEY, l], [CHOSEN_KEY, '1']]); } catch { /* ignore */ }
   emit(l);
 }
 export const useChosenLanguage = () => useSyncExternalStore((cb) => { listeners.add(cb); return () => { listeners.delete(cb); }; }, () => chosen, () => chosen);

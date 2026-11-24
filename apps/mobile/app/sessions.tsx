@@ -14,11 +14,20 @@ import { useTheme } from '../src/theme/useTheme';
 type Dev = { id: string; device_name: string; platform: string | null; last_active_at: string; current: boolean };
 
 function ago(iso: string) {
-  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
-  const f = new Intl.RelativeTimeFormat(currentLocale(), { numeric: 'auto' });
-  if (mins < 60) return f.format(-Math.max(mins, 0), 'minute');
-  if (mins < 1440) return f.format(-Math.round(mins / 60), 'hour');
-  return f.format(-Math.round(mins / 1440), 'day');
+  const elapsed = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(elapsed)) return iso;
+  const mins = Math.max(0, Math.round(elapsed / 60000));
+  const unit: Intl.RelativeTimeFormatUnit = mins < 60 ? 'minute' : mins < 1440 ? 'hour' : 'day';
+  const amount = unit === 'minute' ? mins : unit === 'hour' ? Math.round(mins / 60) : Math.round(mins / 1440);
+  if (typeof Intl.RelativeTimeFormat === 'function') {
+    return new Intl.RelativeTimeFormat(currentLocale(), { numeric: 'auto' }).format(-amount, unit);
+  }
+  const french = currentLocale().startsWith('fr');
+  if (amount === 0) return french ? "à l'instant" : 'just now';
+  const label = french
+    ? { minute: `minute${amount > 1 ? 's' : ''}`, hour: `heure${amount > 1 ? 's' : ''}`, day: `jour${amount > 1 ? 's' : ''}` }[unit]
+    : { minute: `minute${amount > 1 ? 's' : ''}`, hour: `hour${amount > 1 ? 's' : ''}`, day: `day${amount > 1 ? 's' : ''}` }[unit];
+  return french ? `il y a ${amount} ${label}` : `${amount} ${label} ago`;
 }
 const ICON = { ios: 'phone-portrait-outline', android: 'phone-portrait-outline', web: 'globe-outline' } as const;
 

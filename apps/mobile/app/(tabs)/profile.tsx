@@ -65,6 +65,8 @@ export default function ProfileScreen() {
       </Card>
 
       <SectionHeader title={tr('profile.more')} />
+      <Button title={tr('guide.title')} variant="ghost" icon="help-circle-outline" onPress={() => router.push('/guide')} />
+      <Button title={tr('profile.eveningCheckin')} variant="ghost" icon="moon-outline" onPress={() => router.push('/evening-checkin')} />
       <Button title={tr('profile.journal')} variant="ghost" icon="book-outline" onPress={() => router.push('/journal')} />
       <Button title={tr('profile.coach')} variant="ghost" icon="sparkles-outline" onPress={() => router.push('/coach')} />
       <Button title={tr('profile.review')} variant="ghost" icon="calendar-number-outline" onPress={() => router.push('/review')} />

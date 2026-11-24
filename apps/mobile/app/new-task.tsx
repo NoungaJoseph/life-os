@@ -10,6 +10,7 @@ import { Button, Chip, ErrorText, Field, Header, Row, Screen, Text, success } fr
 import { api } from '../src/lib/api';
 import { errorMessage } from '../src/lib/errors';
 import { addDays } from '../src/lib/dates';
+import { DateField } from '../src/components/DateField';
 import { useDashboard, useGoalsOverview, useRefreshAll } from '../src/lib/hooks';
 
 const makeSchema = (t: TFunction) => z.object({
@@ -61,7 +62,7 @@ export default function NewTask() {
         <Chip label={t('newTask.noDate')} selected={!due} onPress={() => setValue('due_date', '')} />
       </Row>
       <Controller control={control} name="due_date" render={({ field, fieldState }) => (
-        <Field label={t('newTask.orDate')} value={field.value ?? ''} onChangeText={field.onChange} error={fieldState.error?.message} autoCapitalize="none" />
+        <DateField label={t('newTask.orDate')} value={field.value ?? ''} onChange={field.onChange} error={fieldState.error?.message} />
       )} />
       <Text size="sm" weight="600">{t('newTask.priority')}</Text>
       <Row>{(['low', 'medium', 'high'] as const).map((p) => <Chip key={p} label={t(`newTask.priorities.${p}`)} selected={prio === p} onPress={() => setValue('priority', p)} />)}</Row>

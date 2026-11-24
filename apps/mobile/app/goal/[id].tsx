@@ -4,13 +4,15 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Platform, View } from 'react-native';
 import { GoalRow, PACE_TONE } from '../../src/components/domain';
+import { MoneyField } from '../../src/components/MoneyField';
 import {
   Button, Card, Celebration, Check, EmptyState, ErrorState, ErrorText, Field, Header, Loading, Pill, ProgressRing, Screen, SectionHeader, Text, success,
 } from '../../src/components/ui';
-import i18n from '../../src/i18n';
+import i18n, { formatNumber } from '../../src/i18n';
 import { api, ApiError } from '../../src/lib/api';
 import { shortDate } from '../../src/lib/dates';
 import { useGoalsOverview, useRefreshAll } from '../../src/lib/hooks';
+import { parseMoneyInput } from '../../src/lib/moneyInput';
 import { Milestone } from '../../src/lib/types';
 import { spacing } from '../../src/theme/tokens';
 
@@ -110,11 +112,18 @@ export default function GoalDetail() {
         <Card>
           <Text weight="600">{t('goalDetail.updateProgress')}</Text>
           <Text size="xs" muted>
-            {t('goalDetail.currently', { value: goal.current_value, rest: `${goal.measurement_type === 'percentage' ? '%' : goal.target_value ? t('goalDetail.ofTarget', { target: goal.target_value }) : ''}${goal.unit ? ` ${goal.unit}` : ''}` })}
+            {t('goalDetail.currently', {
+              value: goal.measurement_type === 'currency' ? formatNumber(goal.current_value) : goal.current_value,
+              rest: `${goal.measurement_type === 'percentage' ? '%' : goal.target_value ? t('goalDetail.ofTarget', { target: goal.measurement_type === 'currency' ? formatNumber(goal.target_value) : goal.target_value }) : ''}${goal.unit ? ` ${goal.unit}` : ''}`,
+            })}
           </Text>
-          <Field label={goal.measurement_type === 'percentage' ? t('goalDetail.newPercentage') : t('goalDetail.newValue')} keyboardType="numeric" value={value} onChangeText={setValue} />
-          <Button title={t('goalDetail.saveProgress')} variant="dark" loading={patch.isPending} disabled={value.trim() === '' || Number.isNaN(Number(value))}
-            onPress={() => { setError(null); patch.mutate({ current_value: Number(value) }, { onSuccess: () => { setValue(''); success(); } }); }} />
+          {goal.measurement_type === 'currency' ? (
+            <MoneyField allowDecimal label={t('goalDetail.newValue')} value={value} onChangeText={setValue} />
+          ) : (
+            <Field label={goal.measurement_type === 'percentage' ? t('goalDetail.newPercentage') : t('goalDetail.newValue')} keyboardType="numeric" value={value} onChangeText={setValue} />
+          )}
+          <Button title={t('goalDetail.saveProgress')} variant="dark" loading={patch.isPending} disabled={value.trim() === '' || Number.isNaN(parseMoneyInput(value))}
+            onPress={() => { setError(null); patch.mutate({ current_value: parseMoneyInput(value) }, { onSuccess: () => { setValue(''); success(); } }); }} />
         </Card>
       )}
 

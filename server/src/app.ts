@@ -9,6 +9,7 @@ import { authRouter } from './routes/auth.routes';
 import { v1Router } from './routes/v1.routes';
 import { logger } from './utils/logger';
 import { paymentWebhookRouter } from './routes/payment-webhook.routes';
+import { paylinkRouter } from './routes/paylink.routes';
 
 export function createApp() {
   const app = express();
@@ -29,7 +30,7 @@ export function createApp() {
         return cb(null, false);
       },
       credentials: true,
-      allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Payment-Signature', 'X-Device-Id', 'X-Device-Name', 'X-Platform', 'Accept-Language'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Payment-Signature', 'X-Nkwa-Signature', 'X-Webhook-Signature', 'X-Device-Id', 'X-Device-Name', 'X-Platform', 'Accept-Language'],
     }),
   );
   app.use(express.json({ limit: '1mb', verify: (req, _res, buf) => { (req as any).rawBody = buf.toString('utf8'); } }));
@@ -49,6 +50,7 @@ export function createApp() {
 
   app.use('/api/v1/public/auth', authRouter);
   app.use('/webhooks/payments', paymentWebhookRouter);
+  app.use('/paylinks', paylinkRouter);
 
   app.use(
     '/api/v1',

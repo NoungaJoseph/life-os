@@ -9,7 +9,7 @@ export const useInsights = () => useQuery({ queryKey: ['insights'], queryFn: () 
 /** Everything derived from tasks, habits or goals must refresh together so numbers never disagree. */
 export function useRefreshAll() {
   const qc = useQueryClient();
-  return () => Promise.all(['dashboard', 'goals', 'insights', 'tasks', 'journal'].map((k) => qc.invalidateQueries({ queryKey: [k] })));
+  return () => Promise.all(['dashboard', 'goals', 'insights', 'tasks', 'journal', 'vault'].map((k) => qc.invalidateQueries({ queryKey: [k] })));
 }
 
 /** One-tap task completion with an optimistic update. */

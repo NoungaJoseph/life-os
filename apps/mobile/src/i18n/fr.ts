@@ -2,6 +2,7 @@ import type { BaseCatalog } from './en';
 import { formsFr } from './ns/forms';
 import { moneyFr } from './ns/money';
 import { tabsFr } from './ns/tabs';
+import { savingsFr } from './ns/savings';
 
 type Deep<T> = { [K in keyof T]: T[K] extends string ? string : Deep<T[K]> };
 const base: Deep<BaseCatalog> = {
@@ -16,6 +17,9 @@ const base: Deep<BaseCatalog> = {
     title: 'Choisissez votre langue', subtitle: 'Vous pourrez la changer à tout moment dans les Paramètres.', french: 'Français', english: 'English', frenchHint: 'French', englishHint: 'Anglais',
     continue: 'Continuer', settingsTitle: 'Langue',
   },
+  datePicker: { choose: 'Choisir une date', previousMonth: 'Mois précédent', nextMonth: 'Mois suivant', clear: 'Effacer la date', today: "Aujourd'hui", time: 'Heure', invalidDateTime: 'Choisissez une date et une heure valide.' },
+  timePicker: { choose: 'Choisir une heure', hour: 'Heure', minute: 'Minute', clear: 'Effacer l’heure' },
+  guide: { title: "Guide de l’application" },
   auth: {
     welcomeTitle: 'Bienvenue', welcomeBody: 'Planifiez votre vie, atteignez vos objectifs et faites grandir votre épargne au même endroit.',
     welcome: { f1Title: 'Planifiez votre vie', f1Body: 'Fixez des objectifs pour chaque domaine et suivez vos progrès.', f2Title: 'Épargnez avec un but', f2Body: "Mettez de l'argent de côté pour ce qui compte, objectif par objectif.", f3Title: 'Restez en sécurité', f3Body: 'Votre code PIN protège votre compte sur ce téléphone.' },
@@ -59,17 +63,24 @@ const base: Deep<BaseCatalog> = {
   wallet: {
     profileButton: 'Portefeuille', title: 'Portefeuille', subtitle: 'Votre argent, enregistré clairement', balance: 'Solde du portefeuille', hideBalance: 'Masquer le solde', showBalance: 'Afficher le solde',
     add: 'Ajouter de l’argent', withdraw: 'Retirer', vault: 'Vers le Coffre', groups: 'Groupes', recent: 'Transactions récentes', all: 'Toutes', empty: 'Aucune transaction pour le moment.',
-    amount: 'Montant en FCFA', phone: 'Numéro Mobile Money', provider: 'Opérateur', sandbox: 'Bac à sable', mtn: 'MTN MoMo', orange: 'Orange Money', suggested: '{{provider}} semble correspondre à ce numéro. Vous pouvez le changer.',
-    submitDeposit: 'Demander le versement', submitWithdrawal: 'Demander le retrait', invalidAmount: 'Saisissez un montant entier supérieur à zéro.', success: 'Demande créée.',
+    amount: 'Montant en FCFA', phone: 'Numéro Mobile Money', phoneHint: '{{count}}/{{max}} chiffres (Cameroun)', invalidPhone: 'Saisissez un numéro camerounais à 9 chiffres.', provider: 'Opérateur', sandbox: 'Bac à sable', mtn: 'MTN MoMo', orange: 'Orange Money', suggested: '{{provider}} semble correspondre à ce numéro. Vous pouvez le changer.',
+    submitDeposit: 'Demander le versement', submitWithdrawal: 'Demander le retrait',
+    submitDepositPaylink: 'Déposer via Nkwa Paylink', submitWithdrawalPaylink: 'Retirer via Nkwa Paylink',
+    paylinkNote: 'Les dépôts et retraits MTN MoMo et Orange Money ouvrent un lien sécurisé Nkwa Paylink pour finaliser et confirmer votre opération.',
+    paylinkReady: 'Nkwa Paylink prêt', paylinkBody: 'Finalisez votre opération de {{amount}} {{currency}} sur Nkwa Paylink, puis appuyez sur Vérifier le statut.',
+    openPaylink: 'Ouvrir Nkwa Paylink', sharePaylink: 'Partager le lien', sharePaylinkMessage: 'Finalisez mon paiement de {{amount}} {{currency}} sur Nkwa Pay : {{url}}',
+    checkStatus: 'Vérifier le statut', pendingPaylinks: 'Liens de paiement actifs',
+    statusUpdated: 'Statut mis à jour : {{status}}.', stillPending: 'Le paiement attend toujours confirmation.',
+    invalidAmount: 'Saisissez un montant entier supérieur à zéro.', success: 'Demande créée.',
     status: { pending: 'En attente', processing: 'En cours', succeeded: 'Réussie', failed: 'Échouée', reversed: 'Annulée' },
     kind: { deposit: 'Versement', withdrawal: 'Retrait', vault_transfer: 'Versement au Coffre', vault_release: 'Déblocage du Coffre', group_contribution: 'Contribution au groupe', group_release: 'Déblocage du groupe', reversal: 'Annulation', adjustment: 'Ajustement' },
   },
   vault: {
-    title: 'Coffre à objectifs', subtitle: 'Une épargne bloquée pour ce qui compte', howTitle: 'Comment fonctionne le Coffre', howBody: "L'argent envoyé au Coffre est réparti entre vos objectifs et reste bloqué. Vous ne pouvez pas le retirer plus tôt. Chaque objectif est reversé automatiquement dans votre portefeuille uniquement lorsque sa cible est atteinte.", acknowledge: "Je comprends que cet argent reste bloqué jusqu'à ce que l'objectif soit atteint.", accept: 'Je comprends, continuer', locked: 'Total bloqué', nextUnlock: 'Prochain déblocage : il manque {{amount}} à {{title}}', goals: 'Objectifs du Coffre', addGoal: 'Ajouter un objectif au Coffre', target: 'Montant cible', priority: 'Priorité de 1 à 5', emergency: "Fonds d'urgence", sampleRent: 'Réserve de loyer', enable: 'Utiliser cet objectif', deposit: 'Verser dans le Coffre', amount: 'Montant en FCFA', preview: 'Voir la répartition', confirm: 'Confirmer le versement bloqué', split: '{{amount}} pour {{title}}', noGoals: "Créez d'abord un objectif classique, puis revenez ici.", loadError: 'Impossible de charger votre Coffre.', exact: 'La totalité des {{amount}} FCFA sera répartie exactement.',
+    title: 'Coffre à objectifs', subtitle: 'Une épargne bloquée pour ce qui compte', howTitle: 'Comment fonctionne le Coffre', howBody: "L'argent envoyé au Coffre est réparti entre vos objectifs et reste bloqué. Vous ne pouvez pas le retirer plus tôt. Chaque objectif est reversé automatiquement dans votre portefeuille uniquement lorsque sa cible est atteinte.", acknowledge: "Je comprends que cet argent reste bloqué jusqu'à ce que l'objectif soit atteint.", accept: 'Je comprends, continuer', locked: 'Total bloqué', nextUnlock: 'Prochain déblocage : il manque {{amount}} à {{title}}', goals: 'Objectifs du Coffre', addGoal: 'Ajouter un objectif au Coffre', createGoal: 'Créer un objectif', target: 'Montant cible', priority: 'Priorité de 1 à 5', emergency: "Fonds d'urgence", sampleRent: 'Réserve de loyer', enable: 'Utiliser cet objectif', deposit: 'Verser dans le Coffre', amount: 'Montant en FCFA', preview: 'Voir la répartition', confirm: 'Confirmer le versement bloqué', split: '{{amount}} pour {{title}}', noGoals: 'Aucun objectif pour le moment. Créez-en un pour commencer à épargner dans votre Coffre.', loadError: 'Impossible de charger votre Coffre.', exact: 'La totalité des {{amount}} FCFA sera répartie exactement.',
   },
   groups: {
     title: 'Épargne en groupe', subtitle: 'Épargnez ensemble, gardez ce qui vous appartient', create: 'Créer un groupe', join: 'Rejoindre avec un code', empty: "Vous n'avez encore rejoint aucun groupe d'épargne.",
-    name: 'Nom du groupe', amount: 'Contribution en FCFA', frequency: 'Fréquence', daily: 'Chaque jour', weekly: 'Chaque semaine', monthly: 'Chaque mois', start: 'Date de début (AAAA-MM-JJ)', end: 'Date de fin (AAAA-MM-JJ)', hideAmounts: "Masquer le montant exact épargné par les autres membres",
+    name: 'Nom du groupe', amount: 'Contribution en FCFA', frequency: 'Fréquence', daily: 'Chaque jour', weekly: 'Chaque semaine', monthly: 'Chaque mois', start: 'Date de début', end: 'Date de fin', hideAmounts: "Masquer le montant exact épargné par les autres membres",
     lockTitle: 'Votre épargne reste la vôtre', lockBody: "Ce groupe ne verse pas l'argent à tour de rôle. Chaque membre épargne dans sa part personnelle bloquée et récupère toute son épargne à la date de fin. Aucun retrait n'est possible avant cette date.", lockCheck: "Je comprends que mes contributions restent bloquées jusqu'à la date de fin.", createAction: "Créer le groupe d'épargne bloquée", code: "Code d'invitation", joinAction: 'Vérifier et rejoindre', invalid: 'Vérifiez les informations du groupe et les dates.',
     invite: 'Inviter des membres', copyCode: 'Partagez ce code : {{code}}', progress: 'Progression des membres', schedule: 'Mon calendrier de contributions', saved: '{{amount}} FCFA épargnés', hidden: 'Montant exact masqué', contribute: 'Payer cette contribution', catchUp: 'Rattraper', nudge: 'Envoyer un rappel', nudged: 'Rappel envoyé', due: 'À payer', paid: 'Payée', late: 'Payée en retard', missed: 'Manquée', endHint: 'Toute votre épargne sera débloquée le {{date}}.', details: 'Détails du groupe', noChat: 'Pas de discussion de groupe : seulement les progrès et des rappels bienveillants.',
   },
@@ -93,6 +104,30 @@ const base: Deep<BaseCatalog> = {
     confirmOthers: 'Déconnecter tous les appareils sauf celui-ci ?', lock: "Verrouiller l'application", lockAfter: 'Verrouiller après', lockNow: 'Immédiatement', lock1: '1 minute', lock5: '5 minutes', empty: 'Aucun autre appareil.',
     signedOut: 'Appareil déconnecté.', changePin: 'Changer le code PIN',
   },
+  eveningCheckin: {
+    eyebrow: 'BILAN DU SOIR', title: 'Bilan du soir', subtitle: '{{date}} · Coucher avant 23 h 00', step: 'Étape {{current}} sur {{total}}',
+    popupEyebrow: 'BILAN DE 22 H', popupTitle: 'L’heure de votre bilan quotidien',
+    popupCountdown: 'Il reste {{minutes}} min avant votre coucher à 23 h 00. Faisons le point sur vos habitudes, objectifs, dépenses et revenus.',
+    popupPastBedtime: 'Votre heure de coucher (23 h 00) approche ou est passée. Faites un point rapide avant de dormir.',
+    startNow: 'Commencer le bilan', snooze15: 'Me le rappeler dans 15 min', dismissTonight: 'Passer pour ce soir',
+    notifTitle: 'Bilan du soir (22 h 00)', notifBody: 'Validez vos habitudes, objectifs, dépenses et revenus avant 23 h 00.',
+    steps: { habits: 'Habitudes du jour', goals: 'Objectifs et tâches', expenses: 'Dépenses', income: 'Nouveaux revenus', reflect: 'Réflexion' },
+    qHabits: 'Quelles habitudes du jour avez-vous accomplies ?', habitsCount: '{{done}} sur {{total}} accomplies',
+    noHabits: 'Aucune habitude prévue aujourd’hui.', habitDone: 'Fait', habitPending: 'À faire',
+    qGoals: 'Avez-vous avancé sur vos objectifs et tâches aujourd’hui ?', openTasks: 'Tâches ouvertes du jour', noOpenTasks: 'Toutes les tâches du jour sont terminées.',
+    activeGoals: 'Objectifs actifs', noActiveGoals: 'Aucun objectif actif pour le moment.', updateValue: 'Mettre à jour la valeur',
+    saveGoal: 'Enregistrer', markGoalDone: 'Marquer terminé', goalSaved: 'Progression enregistrée',
+    qExpenses: 'Combien avez-vous dépensé aujourd’hui ?', spentToday: 'Total dépensé aujourd’hui', noExpensesToday: 'Aucune dépense enregistrée aujourd’hui.',
+    expenseAmount: 'Montant dépensé', expenseCategory: 'Catégorie', expenseDesc: 'Pour quoi avez-vous dépensé ?',
+    expenseDescPlaceholder: 'ex. Repas, transport, courses', addExpense: 'Ajouter la dépense', invalidAmount: 'Saisissez un montant supérieur à zéro.',
+    qIncome: 'Avez-vous reçu un nouveau revenu aujourd’hui ?', incomeToday: 'Total des revenus du jour', noIncomeToday: 'Aucun revenu enregistré aujourd’hui.',
+    incomeAmount: 'Montant reçu', incomeSource: 'Source', incomeSourcePlaceholder: 'ex. Paiement client, salaire, vente',
+    incomeCategory: 'Catégorie (facultatif)', addIncome: 'Ajouter le revenu',
+    qReflect: 'Avant de dormir vers 23 h, clôturez votre journée.', dayRating: 'Comment s’est passée votre journée ?',
+    winsLabel: 'Qu’est-ce qui s’est bien passé aujourd’hui ?', lessonsLabel: 'Qu’avez-vous appris ou envie d’ajuster ?', tomorrowLabel: 'Priorités pour demain',
+    complete: 'Terminer le bilan', completedTitle: 'Bilan terminé', completedBody: 'Bravo d’avoir fait le bilan de votre journée. Reposez-vous bien avant 23 h 00.',
+    backHome: 'Retour à l’accueil', next: 'Suivant', skipStep: 'Rien à ajouter, suivant',
+  },
 };
 
-export const fr = { ...base, ...tabsFr, ...formsFr, ...moneyFr };
+export const fr = { ...base, ...tabsFr, ...formsFr, ...moneyFr, ...savingsFr };

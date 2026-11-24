@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
@@ -16,8 +16,9 @@ export default function JoinGroup() {
   const { t } = useTranslation();
   const th = useTheme();
   const router = useRouter();
+  const { code: inviteCode } = useLocalSearchParams<{ code?: string }>();
   const qc = useQueryClient();
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState(inviteCode ?? '');
   const [accepted, setAccepted] = useState(false);
   const normalized = code.trim().toUpperCase();
   const preview = useQuery({

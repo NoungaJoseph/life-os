@@ -11,6 +11,9 @@ const base = {
     title: 'Choose your language', subtitle: 'You can change it any time in Settings.', french: 'Français', english: 'English', frenchHint: 'French', englishHint: 'Anglais',
     continue: 'Continue', settingsTitle: 'Language',
   },
+  datePicker: { choose: 'Choose a date', previousMonth: 'Previous month', nextMonth: 'Next month', clear: 'Clear date', today: 'Today', time: 'Time', invalidDateTime: 'Choose a date and a valid time.' },
+  timePicker: { choose: 'Choose a time', hour: 'Hour', minute: 'Minute', clear: 'Clear time' },
+  guide: { title: 'App guide' },
   auth: {
     welcomeTitle: 'Welcome', welcomeBody: 'Plan your life, reach your goals and grow your savings in one place.',
     welcome: { f1Title: 'Plan your life', f1Body: 'Set goals for every area and see your progress.', f2Title: 'Save with purpose', f2Body: 'Put money aside for what matters, goal by goal.', f3Title: 'Stay private and safe', f3Body: 'Your PIN protects your account on this phone.' },
@@ -54,17 +57,24 @@ const base = {
   wallet: {
     profileButton: 'Wallet', title: 'Wallet', subtitle: 'Your money, recorded clearly', balance: 'Wallet balance', hideBalance: 'Hide balance', showBalance: 'Show balance',
     add: 'Add money', withdraw: 'Withdraw', vault: 'Send to Vault', groups: 'Groups', recent: 'Recent transactions', all: 'All', empty: 'No wallet transactions yet.',
-    amount: 'Amount in FCFA', phone: 'Mobile Money number', provider: 'Operator', sandbox: 'Sandbox', mtn: 'MTN MoMo', orange: 'Orange Money', suggested: '{{provider}} looks right for this number. You can change it.',
-    submitDeposit: 'Request deposit', submitWithdrawal: 'Request withdrawal', invalidAmount: 'Enter a whole amount above zero.', success: 'Request created.',
+    amount: 'Amount in FCFA', phone: 'Mobile Money number', phoneHint: '{{count}}/{{max}} digits (Cameroon)', invalidPhone: 'Enter a 9-digit Cameroon mobile number.', provider: 'Operator', sandbox: 'Sandbox', mtn: 'MTN MoMo', orange: 'Orange Money', suggested: '{{provider}} looks right for this number. You can change it.',
+    submitDeposit: 'Request deposit', submitWithdrawal: 'Request withdrawal',
+    submitDepositPaylink: 'Deposit with Nkwa Paylink', submitWithdrawalPaylink: 'Withdraw with Nkwa Paylink',
+    paylinkNote: 'MTN MoMo and Orange Money deposits and withdrawals open a secure Nkwa Paylink to complete and confirm your transaction.',
+    paylinkReady: 'Nkwa Paylink ready', paylinkBody: 'Complete your {{amount}} {{currency}} payment in the Nkwa Paylink page, then tap Check status.',
+    openPaylink: 'Open Nkwa Paylink', sharePaylink: 'Share paylink', sharePaylinkMessage: 'Complete my {{amount}} {{currency}} payment on Nkwa Pay: {{url}}',
+    checkStatus: 'Check payment status', pendingPaylinks: 'Active paylinks',
+    statusUpdated: 'Payment status updated: {{status}}.', stillPending: 'Payment is still awaiting confirmation.',
+    invalidAmount: 'Enter a whole amount above zero.', success: 'Request created.',
     status: { pending: 'Pending', processing: 'Processing', succeeded: 'Successful', failed: 'Failed', reversed: 'Reversed' },
     kind: { deposit: 'Deposit', withdrawal: 'Withdrawal', vault_transfer: 'Vault transfer', vault_release: 'Vault release', group_contribution: 'Group contribution', group_release: 'Group release', reversal: 'Reversal', adjustment: 'Adjustment' },
   },
   vault: {
-    title: 'Goal Vault', subtitle: 'Locked savings for what matters', howTitle: 'How the Vault works', howBody: 'Money you send to the Vault is split across your goals and locked. You cannot withdraw it early. Each goal releases automatically to your wallet only when its target is reached.', acknowledge: 'I understand that this money stays locked until the goal is reached.', accept: 'I understand, continue', locked: 'Total locked', nextUnlock: 'Next unlock: {{title}} needs {{amount}} more', goals: 'Vault goals', addGoal: 'Add a goal to the Vault', target: 'Target amount', priority: 'Priority from 1 to 5', emergency: 'Emergency fund', sampleRent: 'Rent reserve', enable: 'Use this goal', deposit: 'Send money to Vault', amount: 'Amount in FCFA', preview: 'Preview split', confirm: 'Confirm locked deposit', split: '{{amount}} to {{title}}', noGoals: 'Create a regular goal first, then return here.', loadError: 'Could not load your Vault.', exact: 'The full {{amount}} FCFA will be allocated exactly.',
+    title: 'Goal Vault', subtitle: 'Locked savings for what matters', howTitle: 'How the Vault works', howBody: 'Money you send to the Vault is split across your goals and locked. You cannot withdraw it early. Each goal releases automatically to your wallet only when its target is reached.', acknowledge: 'I understand that this money stays locked until the goal is reached.', accept: 'I understand, continue', locked: 'Total locked', nextUnlock: 'Next unlock: {{title}} needs {{amount}} more', goals: 'Vault goals', addGoal: 'Add a goal to the Vault', createGoal: 'Create a goal', target: 'Target amount', priority: 'Priority from 1 to 5', emergency: 'Emergency fund', sampleRent: 'Rent reserve', enable: 'Use this goal', deposit: 'Send money to Vault', amount: 'Amount in FCFA', preview: 'Preview split', confirm: 'Confirm locked deposit', split: '{{amount}} to {{title}}', noGoals: 'No goals yet. Create one to start locking savings in your Vault.', loadError: 'Could not load your Vault.', exact: 'The full {{amount}} FCFA will be allocated exactly.',
   },
   groups: {
     title: 'Group savings', subtitle: 'Save together, keep what is yours', create: 'Create a group', join: 'Join with a code', empty: 'You have not joined a savings group yet.',
-    name: 'Group name', amount: 'Contribution in FCFA', frequency: 'Frequency', daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly', start: 'Start date (YYYY-MM-DD)', end: 'End date (YYYY-MM-DD)', hideAmounts: 'Hide exact savings from other members',
+    name: 'Group name', amount: 'Contribution in FCFA', frequency: 'Frequency', daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly', start: 'Start date', end: 'End date', hideAmounts: 'Hide exact savings from other members',
     lockTitle: 'Your savings stay yours', lockBody: 'This is not a rotating payout group. Every member saves into their own locked share and receives their full savings at the end date. You cannot withdraw before then.', lockCheck: 'I understand my contributions stay locked until the end date.', createAction: 'Create locked savings group', code: 'Invite code', joinAction: 'Review and join', invalid: 'Check the group details and dates.',
     invite: 'Invite members', copyCode: 'Share this code: {{code}}', progress: 'Member progress', schedule: 'My contribution calendar', saved: '{{amount}} FCFA saved', hidden: 'Exact amount hidden', contribute: 'Pay this contribution', catchUp: 'Catch up', nudge: 'Send reminder', nudged: 'Reminder sent', due: 'Due', paid: 'Paid', late: 'Paid late', missed: 'Missed', endHint: 'Your full savings unlock on {{date}}.', details: 'Group details', noChat: 'No group chat. Progress and gentle reminders only.',
   },
@@ -88,11 +98,36 @@ const base = {
     confirmOthers: 'Sign out every device except this one?', lock: 'Lock the app', lockAfter: 'Lock after', lockNow: 'Immediately', lock1: '1 minute', lock5: '5 minutes', empty: 'No other devices.',
     signedOut: 'Device signed out.', changePin: 'Change PIN',
   },
+  eveningCheckin: {
+    eyebrow: 'DAILY RUNDOWN', title: 'Evening check-in', subtitle: '{{date}} · Bedtime by 23:00', step: 'Step {{current}} of {{total}}',
+    popupEyebrow: '10 PM CHECK-IN', popupTitle: 'Time for your daily rundown',
+    popupCountdown: '{{minutes}} min left before your 11:00 PM bedtime. Let us check your habits, goals, spending and income.',
+    popupPastBedtime: 'It is past your 11:00 PM bedtime window. Do a quick check-in before sleeping.',
+    startNow: 'Start check-in now', snooze15: 'Remind me in 15 min', dismissTonight: 'Skip for tonight',
+    notifTitle: 'Daily rundown (10:00 PM)', notifBody: 'Check off today’s habits, goals, spending and income before 11:00 PM.',
+    steps: { habits: 'Daily habits', goals: 'Goals & tasks', expenses: 'Spending', income: 'New income', reflect: 'Reflection' },
+    qHabits: 'Which of today’s habits did you complete?', habitsCount: '{{done}} of {{total}} completed',
+    noHabits: 'No habits scheduled for today.', habitDone: 'Done', habitPending: 'Pending',
+    qGoals: 'Did you move your goals and tasks forward today?', openTasks: 'Today’s open tasks', noOpenTasks: 'All tasks for today are cleared.',
+    activeGoals: 'Active goals', noActiveGoals: 'No active goals yet.', updateValue: 'Update current value',
+    saveGoal: 'Save progress', markGoalDone: 'Mark completed', goalSaved: 'Progress saved',
+    qExpenses: 'How much did you spend today?', spentToday: 'Total spent today', noExpensesToday: 'No expenses logged today yet.',
+    expenseAmount: 'Amount spent', expenseCategory: 'Category', expenseDesc: 'What did you spend on?',
+    expenseDescPlaceholder: 'e.g. Lunch, transport, groceries', addExpense: 'Add expense', invalidAmount: 'Enter an amount above zero.',
+    qIncome: 'Did you receive any new income today?', incomeToday: 'Total income today', noIncomeToday: 'No income logged today yet.',
+    incomeAmount: 'Amount received', incomeSource: 'Source', incomeSourcePlaceholder: 'e.g. Client payment, salary, sale',
+    incomeCategory: 'Category (optional)', addIncome: 'Add income',
+    qReflect: 'Before you sleep by 11 PM, wrap up your day.', dayRating: 'How did today go?',
+    winsLabel: 'What went well today?', lessonsLabel: 'What did you learn or want to adjust?', tomorrowLabel: 'Top priorities for tomorrow',
+    complete: 'Complete rundown', completedTitle: 'Rundown complete', completedBody: 'Great job reviewing your day. Rest well before 11:00 PM.',
+    backHome: 'Back to Home', next: 'Next', skipStep: 'Nothing to add, next',
+  },
 };
 import { formsEn } from './ns/forms';
 import { moneyEn } from './ns/money';
 import { tabsEn } from './ns/tabs';
+import { savingsEn } from './ns/savings';
 
-export const en = { ...base, ...tabsEn, ...formsEn, ...moneyEn };
+export const en = { ...base, ...tabsEn, ...formsEn, ...moneyEn, ...savingsEn };
 export type Catalog = typeof en;
 export type BaseCatalog = typeof base;

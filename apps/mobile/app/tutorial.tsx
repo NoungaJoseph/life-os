@@ -8,7 +8,7 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { Button, ErrorText, Screen, Text } from '../src/components/ui';
 import { errorMessage } from '../src/lib/errors';
 import { useSession } from '../src/lib/session';
-import { finishTour } from '../src/lib/tutorial';
+import { finishIntro, finishTour } from '../src/lib/tutorial';
 import { Profile } from '../src/lib/types';
 import { useTheme } from '../src/theme/useTheme';
 
@@ -34,8 +34,15 @@ export default function TutorialScreen() {
   const [index, setIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const finish = async () => {
-    if (!session?.user.id || !profile) return;
-    try { await finishTour(session.user.id, profile, qc); router.replace('/'); } catch (e) { setError(errorMessage(e, t)); }
+    try {
+      if (session?.user.id && profile) {
+        await finishTour(session.user.id, profile, qc);
+        router.replace('/');
+      } else {
+        await finishIntro();
+        router.replace('/login');
+      }
+    } catch (e) { setError(errorMessage(e, t)); }
   };
   const next = () => index === cards.length - 1 ? void finish() : ref.current?.scrollTo({ x: width * (index + 1), animated: true });
   const onScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => setIndex(Math.round(e.nativeEvent.contentOffset.x / width));

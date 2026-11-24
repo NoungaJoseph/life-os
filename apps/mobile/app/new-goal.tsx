@@ -1,15 +1,18 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { DateField } from '../src/components/DateField';
+import { MoneyField } from '../src/components/MoneyField';
 import type { TFunction } from 'i18next';
 import { z } from 'zod';
 import { Button, Chip, ErrorText, Field, Header, Row, Screen, Text, success } from '../src/components/ui';
 import { api } from '../src/lib/api';
 import { errorMessage } from '../src/lib/errors';
 import { useGoalsOverview, useRefreshAll } from '../src/lib/hooks';
+import { parseMoneyInput } from '../src/lib/moneyInput';
 import { LifeArea, Pillar } from '../src/lib/types';
 
 const TYPES = ['long_term', 'annual', 'quarterly', 'monthly', 'weekly', 'daily'] as const;
@@ -31,6 +34,7 @@ type Form = z.infer<ReturnType<typeof makeSchema>>;
 export default function NewGoal() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { from } = useLocalSearchParams<{ from?: string }>();
   const refresh = useRefreshAll();
   const goals = useGoalsOverview();
   const pillars = useQuery({ queryKey: ['pillars'], queryFn: () => api<Pillar[]>('/pillars') });
@@ -50,15 +54,20 @@ export default function NewGoal() {
     mutationFn: (f: Form) => api<{ id: string }>('/goals', { method: 'POST', body: {
       title: f.title, goal_type: f.goal_type, status: 'active', measurement_type: f.measurement_type,
       ...(f.description ? { description: f.description } : {}), ...(f.target_date ? { target_date: f.target_date } : {}),
-      ...(f.target_value ? { target_value: Number(f.target_value) } : {}),
+      ...(f.target_value ? { target_value: parseMoneyInput(f.target_value) } : {}),
       ...(f.parent_goal_id ? { parent_goal_id: f.parent_goal_id } : {}), ...(f.pillar_id ? { pillar_id: f.pillar_id } : {}), ...(f.life_area_id ? { life_area_id: f.life_area_id } : {}),
     } }),
-    onSuccess: (g) => { success(); void refresh(); router.replace({ pathname: '/goal/[id]', params: { id: g.id } }); },
+    onSuccess: (g) => {
+      success();
+      void refresh();
+      if (from === 'vault') router.back();
+      else router.replace({ pathname: '/goal/[id]', params: { id: g.id } });
+    },
     onError: (e) => setError(errorMessage(e, t)),
   });
 
   const submit = handleSubmit((f) => {
-    if ((f.measurement_type === 'numeric' || f.measurement_type === 'currency') && !(Number(f.target_value) > 0)) return setError(t('newGoal.errors.target'));
+    if ((f.measurement_type === 'numeric' || f.measurement_type === 'currency') && !(parseMoneyInput(f.target_value ?? '') > 0)) return setError(t('newGoal.errors.target'));
     setError(null);
     create.mutate(f);
   });
@@ -77,11 +86,15 @@ export default function NewGoal() {
       <Row>{MEASURES.map((v) => <Chip key={v} label={t(`newGoal.measures.${v}`)} selected={measure === v} onPress={() => setValue('measurement_type', v)} />)}</Row>
       {(measure === 'numeric' || measure === 'currency') && (
         <Controller control={control} name="target_value" render={({ field }) => (
-          <Field label={measure === 'currency' ? t('newGoal.targetAmount') : t('newGoal.targetNumber')} keyboardType="numeric" value={field.value ?? ''} onChangeText={field.onChange} />
+          measure === 'currency' ? (
+            <MoneyField allowDecimal label={t('newGoal.targetAmount')} value={field.value ?? ''} onChangeText={field.onChange} />
+          ) : (
+            <Field label={t('newGoal.targetNumber')} keyboardType="numeric" value={field.value ?? ''} onChangeText={field.onChange} />
+          )
         )} />
       )}
       <Controller control={control} name="target_date" render={({ field, fieldState }) => (
-        <Field label={t('newGoal.targetDate')} value={field.value ?? ''} onChangeText={field.onChange} error={fieldState.error?.message} autoCapitalize="none" placeholder="2026-12-31" />
+        <DateField label={t('newGoal.targetDate')} value={field.value ?? ''} onChange={field.onChange} error={fieldState.error?.message} />
       )} />
       {parents.length > 0 && (
         <>

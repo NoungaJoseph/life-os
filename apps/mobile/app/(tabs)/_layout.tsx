@@ -22,6 +22,7 @@ const ACTIONS: { label: string; hint: string; icon: keyof typeof Ionicons.glyphM
   { label: 'tabs.addTask', hint: 'tabs.addTaskHint', icon: 'checkbox-outline', href: '/new-task' },
   { label: 'tabs.addHabit', hint: 'tabs.addHabitHint', icon: 'repeat', href: '/new-habit' },
   { label: 'tabs.addGoal', hint: 'tabs.addGoalHint', icon: 'flag-outline', href: '/new-goal' },
+  { label: 'tabs.dailyCheckin', hint: 'tabs.dailyCheckinHint', icon: 'moon-outline', href: '/evening-checkin' },
   { label: 'tabs.writeReflection', hint: 'tabs.writeReflectionHint', icon: 'create-outline', href: '/journal' },
   { label: 'tabs.askCoach', hint: 'tabs.askCoachHint', icon: 'sparkles-outline', href: '/coach' },
 ];

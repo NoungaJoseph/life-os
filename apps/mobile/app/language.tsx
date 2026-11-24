@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
@@ -18,10 +18,11 @@ export default function LanguageScreen() {
   const { t, i18n } = useTranslation();
   const th = useTheme();
   const router = useRouter();
+  const { from } = useLocalSearchParams<{ from?: string }>();
   const [choice, setChoice] = useState<Lang>(i18n.language === 'fr' ? 'fr' : 'en');
 
   const pick = (c: Lang) => { tap(); setChoice(c); void i18n.changeLanguage(c); };   // preview the language live
-  const confirm = async () => { await setLanguage(choice); if (router.canGoBack()) router.back(); else router.replace('/'); };
+  const confirm = async () => { await setLanguage(choice); router.replace(from === 'settings' ? '/settings' : from === 'auth' ? '/login' : '/tutorial'); };
 
   return (
     <Screen>

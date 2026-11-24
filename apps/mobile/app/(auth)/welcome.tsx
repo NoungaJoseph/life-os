@@ -37,7 +37,7 @@ export default function Welcome() {
       <View className="mt-4 gap-3">
         <Button title={t('auth.createAccount')} onPress={() => router.push('/register')} />
         <Button title={t('auth.signIn')} variant="ghost" onPress={() => router.push('/login')} />
-        <Press onPress={() => router.push('/language')} label={t('language.settingsTitle')} className="items-center py-2">
+        <Press onPress={() => router.push('/language?from=auth')} label={t('language.settingsTitle')} className="items-center py-2">
           <Text size="sm" muted>{t('language.settingsTitle')} · Français / English</Text>
         </Press>
       </View>

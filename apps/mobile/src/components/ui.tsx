@@ -2,34 +2,92 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useRef } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator, Animated, Easing, KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView,
+  ActivityIndicator, Animated, Dimensions, Easing, Keyboard, KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView,
   StyleSheet, Text as RNText, TextInput, TextInputProps, View, ViewStyle,
 } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { fontSize, fonts, radius, shadow, shadowLift, spacing } from '../theme/tokens';
+import { fontSize, fonts, shadow, spacing } from '../theme/tokens';
 import { useTheme } from '../theme/useTheme';
 
 export const tap = () => { if (Platform.OS !== 'web') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); };
 export const success = () => { if (Platform.OS !== 'web') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); };
+
+type ScrollViewRef = React.ComponentRef<typeof ScrollView>;
+type ViewRef = React.ComponentRef<typeof View>;
+const ScreenScrollContext = createContext<{ registerFocus: (node: ViewRef | null) => void } | null>(null);
 
 // ---------- Layout ----------
 export function Screen({ children, scroll = true, onRefresh, refreshing = false, bottomPad = 0 }: {
   children: React.ReactNode; scroll?: boolean; onRefresh?: () => void; refreshing?: boolean; bottomPad?: number;
 }) {
   const t = useTheme();
+  const scrollRef = useRef<ScrollViewRef>(null);
+  const scrollYRef = useRef(0);
+  const focusedRef = useRef<ViewRef | null>(null);
+  const kbTopRef = useRef<number | null>(null);
+  const kbHeightRef = useRef(0);
+  const [kbHeight, setKbHeight] = useState(0);
+
+  const ensureVisible = useCallback((node: ViewRef | null) => {
+    if (!node || !scrollRef.current || Platform.OS === 'web' || kbHeightRef.current <= 0) return;
+    node.measureInWindow((_x, y, _w, h) => {
+      if (!h) return;
+      const winH = Dimensions.get('window').height;
+      const kbTop = kbTopRef.current && kbTopRef.current > 0 ? Math.min(winH, kbTopRef.current) : winH - kbHeightRef.current;
+      const bottom = y + h + 36;
+      if (bottom > kbTop) {
+        scrollRef.current?.scrollTo({ y: Math.max(0, scrollYRef.current + (bottom - kbTop)), animated: true });
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      const h = e.endCoordinates.height ?? 0;
+      kbTopRef.current = e.endCoordinates.screenY ?? null;
+      kbHeightRef.current = h;
+      setKbHeight(h);
+      setTimeout(() => ensureVisible(focusedRef.current), 80);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      kbTopRef.current = null;
+      kbHeightRef.current = 0;
+      setKbHeight(0);
+    });
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, [ensureVisible]);
+
+  const registerFocus = useCallback((node: ViewRef | null) => {
+    focusedRef.current = node;
+    if (kbHeightRef.current > 0) {
+      setTimeout(() => ensureVisible(node), 60);
+    }
+  }, [ensureVisible]);
+
+  const scrollCtx = useMemo(() => ({ registerFocus }), [registerFocus]);
+
   const body = scroll ? (
-    <ScrollView
-      contentContainerClassName="grow"
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-      refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.primary} /> : undefined}
-    >
-      <View className="grow gap-4" style={{ marginHorizontal: spacing.lg, paddingBottom: spacing.xxl + bottomPad, paddingTop: spacing.lg }}>{children}</View>
-    </ScrollView>
+    <ScreenScrollContext.Provider value={scrollCtx}>
+      <ScrollView
+        ref={scrollRef}
+        contentContainerClassName="grow"
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        showsVerticalScrollIndicator={false}
+        onScroll={(e) => { scrollYRef.current = e.nativeEvent.contentOffset.y; }}
+        scrollEventThrottle={16}
+        refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.primary} /> : undefined}
+      >
+        <View className="grow gap-4" style={{ marginHorizontal: spacing.lg, paddingBottom: spacing.xxl + bottomPad + (Platform.OS === 'android' && kbHeight > 0 ? kbHeight + 32 : 0), paddingTop: spacing.lg }}>{children}</View>
+      </ScrollView>
+    </ScreenScrollContext.Provider>
   ) : <View className="grow gap-4 p-6">{children}</View>;
   return (
     <SafeAreaView className="flex-1 bg-bg" edges={['top', 'left', 'right']}
@@ -97,8 +155,12 @@ export function Text({ children, size = 'md', weight = '400', muted, color, seri
 
 // ---------- Surfaces ----------
 export function Card({ children, style, onPress, className = '' }: { children: React.ReactNode; style?: ViewStyle; onPress?: () => void; className?: string }) {
-  // Default gap only when the caller did not choose one, so the two never fight.
-  const inner = <View className={`${/\bgap-/.test(className) ? '' : 'gap-2'} rounded-lg border border-line bg-surface p-[18px] ${className}`} style={[shadow, style]}>{children}</View>;
+  // Content should feel like part of the page, not a stack of floating boxes.
+  // A quiet rule and generous vertical rhythm still make each section scannable.
+  const inner = <View
+    className={`${/\bgap-/.test(className) ? '' : 'gap-2'} border-b border-line px-0 py-4 ${className}`}
+    style={style}
+  >{children}</View>;
   return onPress ? <Press onPress={onPress}>{inner}</Press> : inner;
 }
 
@@ -189,21 +251,41 @@ export function Button({ title, onPress, loading, disabled, variant = 'primary',
   );
 }
 
-export function Field({ label, error, multiline, onFocus, onBlur, right, hint, ...rest }: TextInputProps & { label: string; error?: string; right?: React.ReactNode; hint?: string }) {
+export function Field({ label, error, multiline, onFocus, onBlur, right, left, hint, ...rest }: TextInputProps & { label: string; error?: string; right?: React.ReactNode; left?: React.ReactNode; hint?: string }) {
   const t = useTheme();
+  const screenScroll = useContext(ScreenScrollContext);
+  const containerRef = useRef<ViewRef>(null);
   const [focus, setFocus] = React.useState(false);
+  const focusShadow = focus ? { shadowColor: t.primary, shadowOpacity: 0.18, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } } : undefined;
+  const borderClass = error ? 'border-danger' : focus ? 'border-primary' : 'border-line';
+
   return (
-    <View className="gap-1">
+    <View ref={containerRef} className="gap-1">
       <Text size="sm" weight="600">{label}</Text>
-      <View>
-      <TextInput
-        placeholderTextColor={t.textSecondary} multiline={multiline} accessibilityLabel={label} {...rest}
-        onFocus={(e) => { setFocus(true); onFocus?.(e); }} onBlur={(e) => { setFocus(false); onBlur?.(e); }}
-        className={`rounded-md border bg-surface px-4 py-3 font-sans text-[16px] text-ink ${error ? 'border-danger' : focus ? 'border-primary' : 'border-line'} ${multiline ? 'min-h-[96px]' : ''}`}
-        style={[focus && { shadowColor: t.primary, shadowOpacity: 0.18, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } }, multiline && { textAlignVertical: 'top' }, right ? { paddingRight: 72 } : null]}
-      />
-      {right ? <View className="absolute bottom-0 right-3 top-0 justify-center">{right}</View> : null}
-      </View>
+      {left ? (
+        <View className={`flex-row items-center rounded-md border bg-surface px-4 ${borderClass}`} style={focusShadow}>
+          <View className="mr-3 border-r border-line pr-3">{left}</View>
+          <TextInput
+            placeholderTextColor={t.textSecondary} multiline={multiline} accessibilityLabel={label} {...rest}
+            onFocus={(e) => { setFocus(true); screenScroll?.registerFocus(containerRef.current); onFocus?.(e); }}
+            onBlur={(e) => { setFocus(false); onBlur?.(e); }}
+            className={`flex-1 py-3 font-sans text-[16px] text-ink ${multiline ? 'min-h-[96px]' : ''}`}
+            style={[multiline && { textAlignVertical: 'top' }, right ? { paddingRight: 64 } : null]}
+          />
+          {right ? <View className="ml-2 justify-center">{right}</View> : null}
+        </View>
+      ) : (
+        <View>
+          <TextInput
+            placeholderTextColor={t.textSecondary} multiline={multiline} accessibilityLabel={label} {...rest}
+            onFocus={(e) => { setFocus(true); screenScroll?.registerFocus(containerRef.current); onFocus?.(e); }}
+            onBlur={(e) => { setFocus(false); onBlur?.(e); }}
+            className={`rounded-md border bg-surface px-4 py-3 font-sans text-[16px] text-ink ${borderClass} ${multiline ? 'min-h-[96px]' : ''}`}
+            style={[focusShadow, multiline && { textAlignVertical: 'top' }, right ? { paddingRight: 72 } : null]}
+          />
+          {right ? <View className="absolute bottom-0 right-3 top-0 justify-center">{right}</View> : null}
+        </View>
+      )}
       {hint && !error ? <Text size="xs" muted>{hint}</Text> : null}
       {error ? <Text size="xs" color={t.error}>{error}</Text> : null}
     </View>
@@ -312,7 +394,7 @@ export function IconBadge({ icon, tone = 'info', size = 40 }: { icon: keyof type
 
 export function StatTile({ label, value, sub, icon, tone = 'info' }: { label: string; value: string; sub?: string; icon?: keyof typeof Ionicons.glyphMap; tone?: Tone }) {
   return (
-    <View className="min-w-[140px] flex-1 gap-1 rounded-lg border border-line bg-surface p-4" style={shadow}>
+    <View className="min-w-[140px] flex-1 gap-1 border-l-2 border-gold py-2 pl-3 pr-2">
       {icon ? <IconBadge icon={icon} tone={tone} size={34} /> : null}
       <Text size="xs" muted>{label}</Text>
       <Text size="lg" serif>{value}</Text>
@@ -344,7 +426,7 @@ export function Divider() {
 /** Navy gradient panel with soft decorative circles: the signature hero surface. */
 export function Hero({ children, colors = ['#14213D', '#223E66'] as [string, string] }: { children: React.ReactNode; colors?: [string, string] }) {
   return (
-    <View className="overflow-hidden rounded-xl" style={shadowLift}>
+    <View className="overflow-hidden rounded-md">
       <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ padding: spacing.lg }}>
         <View pointerEvents="none" className="absolute -right-10 -top-[50px] h-[180px] w-[180px] rounded-full bg-[#C9A24B]/15" />
         <View pointerEvents="none" className="absolute -bottom-[60px] -left-[30px] h-[150px] w-[150px] rounded-full bg-[#2DD4BF]/10" />

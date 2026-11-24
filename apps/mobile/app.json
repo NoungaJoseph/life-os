@@ -11,6 +11,7 @@
     "ios": { "supportsTablet": true, "bundleIdentifier": "com.mylifeos.app" },
     "android": {
       "package": "com.mylifeos.app",
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#14213D",
         "foregroundImage": "./assets/android-icon-foreground.png",

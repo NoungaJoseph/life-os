@@ -6,6 +6,7 @@ import type { TFunction } from 'i18next';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
+import { TimeField } from '../src/components/TimeField';
 import { Button, Chip, ErrorText, Field, Header, Row, Screen, Text, success } from '../src/components/ui';
 import { api } from '../src/lib/api';
 import { errorMessage } from '../src/lib/errors';
@@ -77,7 +78,7 @@ export default function NewHabit() {
         </>
       )}
       <Controller control={control} name="preferred_time" render={({ field, fieldState }) => (
-        <Field label={t('newHabit.preferredTime')} value={field.value ?? ''} onChangeText={field.onChange} error={fieldState.error?.message} placeholder="07:30" />
+        <TimeField label={t('newHabit.preferredTime')} value={field.value ?? ''} onChange={field.onChange} error={fieldState.error?.message} />
       )} />
       {(areas.data ?? []).length > 0 && (
         <>

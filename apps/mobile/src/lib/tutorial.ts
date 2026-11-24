@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient } from '@tanstack/react-query';
+import { useSyncExternalStore } from 'react';
 import { api } from './api';
 import { Preferences, Profile } from './types';
 
@@ -8,6 +9,22 @@ export type TipScreen = typeof TIP_SCREENS[number];
 const prefix = (userId: string) => `mylifeos:tutorial:${userId}`;
 const tourKey = (userId: string) => `${prefix(userId)}:tour`;
 const tipKey = (userId: string, screen: TipScreen) => `${prefix(userId)}:tip:${screen}`;
+const introKey = 'mylifeos:intro:seen';
+let introSeen: boolean | undefined;
+const introListeners = new Set<() => void>();
+const emitIntro = (seen: boolean) => { introSeen = seen; introListeners.forEach((listener) => listener()); };
+export async function loadIntro() {
+  try { emitIntro((await AsyncStorage.getItem(introKey)) === '1'); }
+  catch { emitIntro(false); }
+}
+export async function finishIntro() {
+  try { await AsyncStorage.setItem(introKey, '1'); } catch { /* allow the flow to continue */ }
+  emitIntro(true);
+}
+export const useIntroSeen = () => useSyncExternalStore((listener) => {
+  introListeners.add(listener);
+  return () => { introListeners.delete(listener); };
+}, () => introSeen, () => introSeen);
 
 export async function hasSeenTour(userId: string, profile?: Profile | null) {
   if (profile?.preferences?.tutorial?.tour_seen) return true;

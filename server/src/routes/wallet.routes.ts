@@ -2,10 +2,11 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { adminClient } from '../config/supabase';
 import { validate } from '../middleware/validate';
-import { paymentProvider } from '../services/payment-provider';
+import { paymentProvider, nkwaPayConfig } from '../services/payment-provider';
 import { postMoney, settlePayment, walletContext } from '../services/wallet-ledger';
+import { resolvePaylinkUrl, syncPaymentRequest } from './paylink.routes';
 import { asyncHandler } from '../utils/asyncHandler';
-import { badRequest, AppError, forbidden } from '../utils/errors';
+import { badRequest, AppError, forbidden, notFound } from '../utils/errors';
 import { created, ok } from '../utils/response';
 import { paymentRequestSchema, transactionListQuery, uuidParam, vaultAmountSchema, vaultGoalSchema } from '../validators/schemas';
 import { allocateVault } from '../services/vault';
@@ -35,10 +36,47 @@ walletRouter.get('/wallet/transactions', validate(transactionListQuery, 'query')
   const ids=(data??[]).map((row:any)=>row.id);const requests=ids.length?await adminClient.from('payment_requests').select('transaction_id,status').in('transaction_id',ids):{data:[]};const paymentStatus=new Map((requests.data??[]).map((row:any)=>[row.transaction_id,row.status]));ok(res,(data??[]).map((row:any)=>({...row,status:paymentStatus.get(row.id)??row.status})),{page,pageSize,total:count??0});
 }));
 
+walletRouter.get('/wallet/paylink-config', asyncHandler(async (_req, res) => {
+  const cfg = nkwaPayConfig();
+  ok(res, {
+    nkwa_api_enabled: cfg.apiEnabled,
+    deposit_paylink_configured: Boolean(cfg.depositPaylinkUrl),
+    withdrawal_paylink_configured: Boolean(cfg.withdrawalPaylinkUrl),
+    mode: cfg.mode,
+  });
+}));
+
+walletRouter.get('/wallet/payments', asyncHandler(async (req, res) => {
+  const { data, error } = await adminClient
+    .from('payment_requests')
+    .select('*')
+    .eq('user_id', req.userId!)
+    .order('created_at', { ascending: false })
+    .limit(20);
+  if (error) {
+    if (error.code === 'PGRST205' || /payment_requests/i.test(error.message)) return ok(res, []);
+    throw new AppError(500, 'WALLET_ERROR', error.message);
+  }
+  ok(res, (data ?? []).map((row: any) => ({ ...row, paylink_url: resolvePaylinkUrl(req, row) })));
+}));
+
+walletRouter.post('/wallet/payments/:id/sync', validate(uuidParam, 'params'), asyncHandler(async (req, res) => {
+  const { data, error } = await adminClient
+    .from('payment_requests')
+    .select('*')
+    .eq('id', req.params.id)
+    .eq('user_id', req.userId!)
+    .maybeSingle();
+  if (error) throw new AppError(500, 'WALLET_ERROR', error.message);
+  if (!data) throw notFound('Payment request not found');
+  const updated = await syncPaymentRequest(data);
+  ok(res, { ...updated, paylink_url: resolvePaylinkUrl(req, updated) });
+}));
+
 async function startPayment(req: any, direction: 'deposit'|'withdrawal') {
   const idempotencyKey=key(req); const body=paymentRequestSchema.parse(req.body); const userId=req.userId!;
   const existing=await adminClient.from('payment_requests').select('*').eq('user_id',userId).eq('direction',direction).eq('idempotency_key',idempotencyKey).maybeSingle();
-  if(existing.data) return existing.data;
+  if(existing.data) return { ...existing.data, paylink_url: resolvePaylinkUrl(req, existing.data) };
   const { wallet, own }=await walletContext(userId,body.provider);
   const inserted=await adminClient.from('payment_requests').insert({user_id:userId,wallet_id:wallet.id,idempotency_key:idempotencyKey,provider:body.provider,direction,amount:body.amount,currency:'XAF',phone:body.phone}).select().single(); if(inserted.error) throw new AppError(500,'PAYMENT_ERROR',inserted.error.message);
   let hold: any=null;
@@ -51,7 +89,8 @@ async function startPayment(req: any, direction: 'deposit'|'withdrawal') {
   try { result=direction==='deposit'?await provider.requestDeposit({requestId:inserted.data.id,amount:body.amount,currency:'XAF',phone:body.phone,direction}):await provider.requestWithdrawal({requestId:inserted.data.id,amount:body.amount,currency:'XAF',phone:body.phone,direction}); }
   catch(e){ if(direction==='withdrawal') await settlePayment(inserted.data,'failed'); throw new AppError(503,'PROVIDER_UNAVAILABLE',(e as Error).message); }
   await adminClient.from('payment_requests').update({provider_reference:result.reference,status:result.status}).eq('id',inserted.data.id);
-  return result.status==='succeeded'||result.status==='failed'?settlePayment({...inserted.data,provider_reference:result.reference,status:'processing'},result.status):{...inserted.data,provider_reference:result.reference,status:result.status};
+  const finalRow = result.status==='succeeded'||result.status==='failed'? await settlePayment({...inserted.data,provider_reference:result.reference,status:'processing'},result.status):{...inserted.data,provider_reference:result.reference,status:result.status};
+  return { ...finalRow, paylink_url: result.paylinkUrl ?? resolvePaylinkUrl(req, finalRow) };
 }
 walletRouter.post('/wallet/deposits', validate(paymentRequestSchema), asyncHandler(async(req,res)=>created(res,await startPayment(req,'deposit'))));
 walletRouter.post('/wallet/withdrawals', validate(paymentRequestSchema), asyncHandler(async(req,res)=>created(res,await startPayment(req,'withdrawal'))));

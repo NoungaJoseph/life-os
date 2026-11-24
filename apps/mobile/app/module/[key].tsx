@@ -5,9 +5,13 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Platform, View } from 'react-native';
 import { Button, Card, Check, Chip, EmptyState, ErrorState, ErrorText, FadeIn, Field, Header, IconBadge, Loading, Press, Row, Screen, Text, success } from '../../src/components/ui';
+import { DateField } from '../../src/components/DateField';
+import { MoneyField } from '../../src/components/MoneyField';
+import { TimeField } from '../../src/components/TimeField';
 import { api } from '../../src/lib/api';
 import { errorMessage } from '../../src/lib/errors';
 import { FieldDef, findModule } from '../../src/lib/modules';
+import { parseMoneyInput } from '../../src/lib/moneyInput';
 import { spacing } from '../../src/theme/tokens';
 import { useTheme } from '../../src/theme/useTheme';
 
@@ -48,7 +52,12 @@ export default function ModuleScreen() {
         const v = vals[f.key] ?? initial(f);
         if (f.type === 'toggle') { body[f.key] = v === true; continue; }
         if (v === '' || v === undefined) { if (f.required) throw new Error(tr('modules.required', { label: tr(f.label) })); continue; }
-        if (f.type === 'number') { const n = Number(String(v).replace(/,/g, '')); if (Number.isNaN(n)) throw new Error(tr('modules.mustBeNumber', { label: tr(f.label) })); body[f.key] = n; }
+        if (f.key === 'starts_at') {
+          if (!/^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:00$/.test(String(v)) || Number.isNaN(new Date(String(v)).getTime())) throw new Error(tr('datePicker.invalidDateTime'));
+          body[f.key] = new Date(String(v)).toISOString();
+          continue;
+        }
+        if (f.type === 'number' || f.type === 'money') { const n = parseMoneyInput(String(v)); if (Number.isNaN(n)) throw new Error(tr('modules.mustBeNumber', { label: tr(f.label) })); body[f.key] = n; }
         else body[f.key] = String(v).trim();
       }
       if (def!.key === 'grocery') body.list_id = await ensureGroceryList(tr('ui.shoppingList'));
@@ -77,6 +86,7 @@ export default function ModuleScreen() {
       {open && (
         <FadeIn>
           <Card className="gap-[16px]">
+            {def.key === 'budgets' ? <Text size="sm" muted>{tr('modules.budgets.howItWorks')}</Text> : null}
             {def.fields.map((f) => {
               const v = vals[f.key] ?? initial(f);
               if (f.type === 'select') return (
@@ -86,14 +96,28 @@ export default function ModuleScreen() {
                 </View>);
               if (f.type === 'toggle') return (
                 <Row key={f.key}><Check checked={v === true} onPress={() => set(f.key, v !== true)} label={tr(f.label)} /><Text>{tr(f.label)}</Text></Row>);
+              if (f.type === 'date') return <DateField key={f.key} label={tr(f.label)} value={String(v)} onChange={(date) => set(f.key, date)} required={f.required} />;
+              if (f.type === 'time') return <TimeField key={f.key} label={tr(f.label)} value={String(v)} onChange={(time) => set(f.key, time)} required={f.required} />;
+              if (f.type === 'money') return <MoneyField key={f.key} allowDecimal label={tr(f.label)} value={String(v)} onChangeText={(x) => set(f.key, x)} placeholder={f.placeholder ? tr(f.placeholder) : undefined} />;
+              if (f.key === 'starts_at') {
+                const value = String(v);
+                const datePart = value.slice(0, 10);
+                const time = value.includes('T') ? value.slice(11, 16) : '09:00';
+                return <View key={f.key} className="gap-3">
+                  <DateField label={tr(f.label)} value={datePart} onChange={(date) => set(f.key, date ? `${date}T${time}:00` : '')} required />
+                  <TimeField label={tr('datePicker.time')} value={datePart.length >= 10 ? time : ''} onChange={(next) => set(f.key, `${datePart.length >= 10 ? datePart : todayStr()}T${next || '09:00'}:00`)} required />
+                </View>;
+              }
               return <Field key={f.key} label={tr(f.label)} value={String(v)} onChangeText={(x) => set(f.key, x)} multiline={f.type === 'multiline'}
-                keyboardType={f.type === 'number' ? 'decimal-pad' : 'default'} placeholder={f.placeholder ? tr(f.placeholder) : f.type === 'date' ? tr('ui.datePlaceholder') : undefined} autoCapitalize={f.type === 'text' || f.type === 'multiline' ? 'sentences' : 'none'} />;
+                keyboardType={f.type === 'number' ? 'decimal-pad' : 'default'} placeholder={f.placeholder ? tr(f.placeholder) : undefined} autoCapitalize={f.type === 'text' || f.type === 'multiline' ? 'sentences' : 'none'} />;
             })}
             <ErrorText message={error} />
             <Button title={tr('modules.save')} loading={add.isPending} onPress={() => add.mutate()} />
           </Card>
         </FadeIn>
       )}
+
+      {def.key === 'budgets' && !open ? <Text size="sm" muted>{tr('modules.budgets.howItWorks')}</Text> : null}
 
       {list.isLoading ? <Loading /> : list.error ? <ErrorState message={errorMessage(list.error, tr)} onRetry={() => void list.refetch()} />
         : (list.data ?? []).length === 0 ? <EmptyState icon={def.icon} title={tr('modules.emptyTitle', { title: tr(def.title).toLowerCase() })} body={tr(def.emptyBody)} action={tr('modules.addFirst')} onAction={() => setOpen(true)} />
