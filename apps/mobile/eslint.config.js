@@ -5,7 +5,7 @@ const expoConfig = require('eslint-config-expo/flat');
 module.exports = defineConfig([
   expoConfig,
   {
-    ignores: ['dist/*'],
+    ignores: ['dist/*', 'dist-*/*', 'visual-*/*'],
   },
   // Existing React Native Animated components keep mutable values in refs.
   // The compiler-oriented rule treats their render-time interpolations as unsafe.

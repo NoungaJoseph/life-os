@@ -4,14 +4,13 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Platform, Pressable, View } from 'react-native';
-import { Card, Check, EmptyState, ErrorState, FadeIn, Header, Loading, Pill, Screen, SectionHeader, Text, tap } from '../../src/components/ui';
+import { Card, Check, EmptyState, ErrorState, FadeIn, Header, Loading, Pill, Press, Screen, SectionHeader, Text, tap } from '../../src/components/ui';
 import { FirstVisitTip } from '../../src/components/Tutorial';
 import { api } from '../../src/lib/api';
 import { errorMessage } from '../../src/lib/errors';
 import { addDays, dayNum, prettyDate, shortDays, weekStart } from '../../src/lib/dates';
 import { useDashboard, useRefreshAll, useToggleHabit, useToggleTask } from '../../src/lib/hooks';
 import { Task } from '../../src/lib/types';
-import { spacing } from '../../src/theme/tokens';
 import { useTheme } from '../../src/theme/useTheme';
 
 export default function Planner() {
@@ -66,7 +65,18 @@ export default function Planner() {
   return (
     <Screen onRefresh={() => void refresh()} refreshing={tasks.isRefetching} bottomPad={130}>
       <FirstVisitTip screen="planner" />
-      <Header title={tr('planner.title')} subtitle={prettyDate(date)} />
+      <Header eyebrow="MY LIFE OS / PLAN" title={tr('planner.title')} subtitle={prettyDate(date)} />
+
+      <View className="flex-row gap-2">
+        <Press onPress={() => router.push('/goals')} className="min-h-[48px] flex-1 flex-row items-center justify-center gap-2 rounded-md bg-surface-alt px-3">
+          <Ionicons name="flag-outline" size={18} color={t.text} />
+          <Text size="sm" weight="600">{tr('tabs.goals')}</Text>
+        </Press>
+        <Press onPress={() => router.push('/areas')} className="min-h-[48px] flex-1 flex-row items-center justify-center gap-2 rounded-md bg-surface-alt px-3">
+          <Ionicons name="grid-outline" size={18} color={t.text} />
+          <Text size="sm" weight="600">{tr('tabs.areas')}</Text>
+        </Press>
+      </View>
 
       <View className="flex-row items-center gap-[4px]">
         <Pressable hitSlop={10} accessibilityLabel={tr('planner.prevWeek')} onPress={() => { tap(); setPicked(addDays(date, -7)); }}><Ionicons name="chevron-back" size={22} color={t.primary} /></Pressable>

@@ -10,6 +10,7 @@ import { v1Router } from './routes/v1.routes';
 import { logger } from './utils/logger';
 import { paymentWebhookRouter } from './routes/payment-webhook.routes';
 import { paylinkRouter } from './routes/paylink.routes';
+import { publicReportsRouter } from './routes/reports.routes';
 
 export function createApp() {
   const app = express();
@@ -51,6 +52,7 @@ export function createApp() {
   app.use('/api/v1/public/auth', authRouter);
   app.use('/webhooks/payments', paymentWebhookRouter);
   app.use('/paylinks', paylinkRouter);
+  app.use('/reports', publicReportsRouter);
 
   app.use(
     '/api/v1',

@@ -11,3 +11,5 @@ dist-*
 .next
 *.log
 .DS_Store
+tsconfig.tsbuildinfo
+visual-*

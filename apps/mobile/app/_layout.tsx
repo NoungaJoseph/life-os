@@ -13,6 +13,7 @@ import React, { useEffect, useState } from 'react';
 import { useColorScheme, View } from 'react-native';
 import { themeVars } from '../src/theme/vars';
 import { EveningCheckinPrompt } from '../src/components/EveningCheckinPrompt';
+import { RoutinePrompts } from '../src/components/RoutinePrompts';
 import { Loading, Text } from '../src/components/ui';
 import { useTranslation } from 'react-i18next';
 import { loadLanguage, useChosenLanguage } from '../src/i18n';
@@ -61,11 +62,15 @@ function Gate() {
 
   useEffect(() => {
     if (visualTutorial) return;
-    if (loading || chosen === undefined || introSeen === undefined) return;
+    if (loading || chosen === undefined || introSeen === undefined || (!!session && lock.hasPin === null)) return;
     if (chosen === null) { if (group !== 'language') router.replace('/language'); return; }
     if (!session) {
       if (!introSeen) { if (group !== 'tutorial' && group !== 'language') router.replace('/tutorial'); return; }
       if (group !== '(auth)' && group !== 'language') router.replace('/login');
+      return;
+    }
+    if (lock.hasPin === false && !['create-pin', 'onboarding', '(auth)'].includes(group ?? '')) {
+      router.replace('/create-pin');
       return;
     }
     if (lock.hasPin && lock.locked) {
@@ -77,9 +82,9 @@ function Gate() {
     }
   }, [loading, chosen, introSeen, session, lock.hasPin, lock.locked, group, router, visualTutorial]);
 
-  const waiting = !visualTutorial && (loading || chosen === undefined || introSeen === undefined);
+  const waiting = !visualTutorial && (loading || chosen === undefined || introSeen === undefined || (!!session && lock.hasPin === null));
   if (waiting) return <Loading />;
-  const promptActive = !visualTutorial && !!session && !(lock.hasPin && lock.locked) && !['evening-checkin', 'onboarding', 'tutorial', 'language', '(auth)', 'unlock'].includes(group ?? '');
+  const promptActive = !visualTutorial && !!session && !(lock.hasPin && lock.locked) && !['evening-checkin', 'morning-plan', 'onboarding', 'tutorial', 'language', '(auth)', 'unlock'].includes(group ?? '');
   return (
     <View className="flex-1 bg-bg" style={themeVars(scheme)}>
     {!online && <View className="bg-[#14213D] pb-1.5 pt-8"><Text size="xs" color="#E9D9A6" style={{ textAlign: 'center' }}>{t('common.offline')}</Text></View>}
@@ -87,9 +92,11 @@ function Gate() {
       <Stack.Screen name="new-task" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="new-habit" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="new-goal" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="morning-plan" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="evening-checkin" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
     </Stack>
     <EveningCheckinPrompt active={promptActive} />
+    <RoutinePrompts active={promptActive} />
     </View>
   );
 }

@@ -43,7 +43,7 @@ export default function CreatePin() {
     <Screen scroll>
       <View className="items-center gap-2 pt-10">
         <FadeIn><View className="h-16 w-16 items-center justify-center rounded-full bg-surface-alt"><Ionicons name="keypad" size={30} color={th.primary} /></View></FadeIn>
-        <Text size="xl" serif weight="700" style={{ textAlign: 'center' }}>{first ? t('auth.pin.confirmTitle') : t('auth.pin.createTitle')}</Text>
+        <Text size="xl" weight="700" style={{ textAlign: 'center' }}>{first ? t('auth.pin.confirmTitle') : t('auth.pin.createTitle')}</Text>
         <Text muted size="sm" style={{ textAlign: 'center' }}>{first ? t('auth.pin.confirmBody') : t('auth.pin.createBody')}</Text>
       </View>
       <View className="mt-6"><PinPad onComplete={(p) => void entered(p)} resetKey={reset} disabled={busy} /></View>

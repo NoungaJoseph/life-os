@@ -1,0 +1,10 @@
+project_id = "my-life-os"
+
+[db]
+major_version = 15
+
+[db.migrations]
+enabled = true
+
+[db.seed]
+enabled = false

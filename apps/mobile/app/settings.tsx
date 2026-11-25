@@ -10,6 +10,12 @@ import { api } from '../src/lib/api';
 import { errorMessage } from '../src/lib/errors';
 import { setEveningCheckinPrefs, syncEveningCheckinNotification, useEveningCheckinState } from '../src/lib/eveningCheckin';
 import { enablePush } from '../src/lib/push';
+import {
+  requestLocalNotificationPermission,
+  setRoutinePrefs,
+  syncRoutineNotifications,
+  useRoutineState,
+} from '../src/lib/routineNotifications';
 import { signOutDevice } from '../src/lib/signOut';
 import { useSession } from '../src/lib/session';
 import { resetTutorial } from '../src/lib/tutorial';
@@ -31,7 +37,45 @@ export default function Settings() {
   const [err, setErr] = useState<string | null>(null);
   const [confirm, setConfirm] = useState('');
   const [pushMsg, setPushMsg] = useState<string | null>(null);
+  const [localMsg, setLocalMsg] = useState<string | null>(null);
   const evening = useEveningCheckinState();
+  const routine = useRoutineState();
+  const routineCopy = () => ({
+    channelName: tr('ui.push.channel'),
+    morningTitle: tr('routine.notif.morningTitle'),
+    morningBody: tr('routine.notif.morningBody'),
+    breakfastTitle: tr('routine.notif.breakfastTitle'),
+    breakfastBody: tr('routine.notif.breakfastBody'),
+    lunchTitle: tr('routine.notif.lunchTitle'),
+    lunchBody: tr('routine.notif.lunchBody'),
+    dinnerTitle: tr('routine.notif.dinnerTitle'),
+    dinnerBody: tr('routine.notif.dinnerBody'),
+    monthlyTitle: tr('routine.notif.monthlyTitle'),
+    monthlyBody: tr('routine.notif.monthlyBody'),
+  });
+  const enableLocal = useMutation({
+    mutationFn: async () => {
+      const perm = await requestLocalNotificationPermission();
+      if (perm === 'web') return 'web';
+      if (perm !== 'granted') return 'blocked';
+      await Promise.all([
+        syncEveningCheckinNotification(tr('eveningCheckin.notifTitle'), tr('eveningCheckin.notifBody'), true),
+        syncRoutineNotifications(routineCopy(), true),
+      ]);
+      return 'done';
+    },
+    onSuccess: (status) => {
+      if (status === 'done') {
+        success();
+        setLocalMsg(tr('settingsPage.localNotifDone'));
+      } else if (status === 'web') {
+        setLocalMsg(tr('ui.push.web'));
+      } else {
+        setLocalMsg(tr('ui.push.blocked'));
+      }
+    },
+    onError: (e) => setLocalMsg(errorMessage(e, tr)),
+  });
   const push = useMutation({
     mutationFn: enablePush,
     onSuccess: (r) => {
@@ -116,11 +160,93 @@ export default function Settings() {
               required
             />
           )}
+          <Button title={tr('settingsPage.enableLocalNotif')} variant="ghost" icon="notifications-outline" loading={enableLocal.isPending} onPress={() => enableLocal.mutate()} />
+          {localMsg ? <Text size="sm" muted>{localMsg}</Text> : null}
           <Button title={tr('settingsPage.enablePush')} variant="ghost" loading={push.isPending} onPress={() => push.mutate()} />
           {pushMsg ? <Text size="sm" muted>{pushMsg}</Text> : <Text size="xs" muted>{tr('settingsPage.pushNeedsBuild')}</Text>}
           <Button title={tr('settingsPage.save')} loading={save.isPending} onPress={() => save.mutate()} />
         </Card>
       )}
+      <SectionHeader title={tr('settingsPage.routineSection')} />
+      <Card className="gap-[16px]">
+        <View className="flex-row items-center justify-between">
+          <View className="flex-1 pr-3">
+            <Text weight="600">{tr('settingsPage.morningPlan')}</Text>
+            <Text size="xs" muted>{tr('settingsPage.morningPlanHint')}</Text>
+          </View>
+          <Switch
+            value={routine.morningEnabled}
+            onValueChange={(v) => {
+              void setRoutinePrefs({ morningEnabled: v }).then(() => syncRoutineNotifications(routineCopy()));
+            }}
+            trackColor={{ true: t.primary, false: t.border }}
+          />
+        </View>
+        {routine.morningEnabled && (
+          <TimeField
+            label={tr('settingsPage.morningTime')}
+            value={routine.morningTime}
+            onChange={(v) => {
+              void setRoutinePrefs({ morningTime: v }).then(() => syncRoutineNotifications(routineCopy()));
+            }}
+            required
+          />
+        )}
+        <View className="flex-row items-center justify-between">
+          <View className="flex-1 pr-3">
+            <Text weight="600">{tr('settingsPage.mealFollowups')}</Text>
+            <Text size="xs" muted>{tr('settingsPage.mealFollowupsHint')}</Text>
+          </View>
+          <Switch
+            value={routine.mealsEnabled}
+            onValueChange={(v) => {
+              void setRoutinePrefs({ mealsEnabled: v }).then(() => syncRoutineNotifications(routineCopy()));
+            }}
+            trackColor={{ true: t.primary, false: t.border }}
+          />
+        </View>
+        {routine.mealsEnabled && (
+          <>
+            <TimeField
+              label={tr('settingsPage.breakfastTime')}
+              value={routine.breakfastTime}
+              onChange={(v) => {
+                void setRoutinePrefs({ breakfastTime: v }).then(() => syncRoutineNotifications(routineCopy()));
+              }}
+              required
+            />
+            <TimeField
+              label={tr('settingsPage.lunchTime')}
+              value={routine.lunchTime}
+              onChange={(v) => {
+                void setRoutinePrefs({ lunchTime: v }).then(() => syncRoutineNotifications(routineCopy()));
+              }}
+              required
+            />
+            <TimeField
+              label={tr('settingsPage.dinnerTime')}
+              value={routine.dinnerTime}
+              onChange={(v) => {
+                void setRoutinePrefs({ dinnerTime: v }).then(() => syncRoutineNotifications(routineCopy()));
+              }}
+              required
+            />
+          </>
+        )}
+        <View className="flex-row items-center justify-between">
+          <View className="flex-1 pr-3">
+            <Text weight="600">{tr('settingsPage.monthlyReportAlert')}</Text>
+            <Text size="xs" muted>{tr('settingsPage.monthlyReportAlertHint')}</Text>
+          </View>
+          <Switch
+            value={routine.monthlyReportEnabled}
+            onValueChange={(v) => {
+              void setRoutinePrefs({ monthlyReportEnabled: v }).then(() => syncRoutineNotifications(routineCopy()));
+            }}
+            trackColor={{ true: t.primary, false: t.border }}
+          />
+        </View>
+      </Card>
       <SectionHeader title={tr('settingsPage.yourData')} />
       <Card className="gap-[16px]">
         <Text size="sm" muted>{tr('settingsPage.exportBody')}</Text>

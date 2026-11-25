@@ -184,6 +184,8 @@ GitHub Actions runs `.github/workflows/ci.yml` for every pull request and every 
 - **Mobile:** clean install, TypeScript check, i18n tests, untranslated-copy audit, and an Expo web export.
 - CI uses Node.js 20, matching the server's supported runtime.
 
+Database migrations run automatically via `.github/workflows/migrate.yml` whenever a push to `main` changes `server/` or `supabase/migrations/`. Add `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, and `SUPABASE_DB_PASSWORD` under GitHub **Settings → Secrets and variables → Actions**. If earlier SQL files were already run manually in the Supabase SQL Editor, trigger **Actions → Database Migrations → Run workflow** once with `repair_applied` set to `all` (or a comma-separated list of applied timestamps) before letting pushes run future migrations automatically.
+
 API deployment is described by `render.yaml`. Connect this repository to Render as a Blueprint and enable automatic deploys from `main`. Render builds `server/` with `npm install --include=dev && npm run build`, starts it with `npm start`, and checks `/health`. Configure `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, and `CORS_ORIGINS` in Render's secret environment settings; never commit them.
 
 Mobile releases remain an explicit EAS step. Create preview/production builds after CI passes; public Expo variables must be configured in EAS, while server secrets must never enter the mobile build.

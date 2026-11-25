@@ -139,7 +139,7 @@ export default function Onboarding() {
       if (step === STEP_COUNT - 1) {
         await api('/profile', { method: 'PATCH', body: { onboarding_completed: true } });
         await Promise.all([qc.invalidateQueries({ queryKey: ['profile'] }), qc.invalidateQueries({ queryKey: ['goals'] })]);
-        router.replace('/');
+        router.replace(isEdit ? '/' : '/create-pin');
       } else {
         setStep(step + 1);
       }
@@ -269,7 +269,7 @@ export default function Onboarding() {
       <ErrorText message={error} />
       <Button title={last ? t('onboarding.finish') : t('common.continue')} onPress={next} loading={saving} />
       {step > 0 && <Button title={t('common.back')} variant="ghost" onPress={() => { setError(null); setStep(step - 1); }} disabled={saving} />}
-      <Button title={isEdit ? t('common.close') : t('tutorial.skip')} variant="ghost" onPress={() => { void api('/profile', { method: 'PATCH', body: { onboarding_completed: true } }).catch(() => undefined); router.replace('/'); }} disabled={saving} />
+      <Button title={isEdit ? t('common.close') : t('tutorial.skip')} variant="ghost" onPress={() => { void api('/profile', { method: 'PATCH', body: { onboarding_completed: true } }).catch(() => undefined); router.replace(isEdit ? '/' : '/create-pin'); }} disabled={saving} />
     </Screen>
   );
 }

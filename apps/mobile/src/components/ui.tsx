@@ -113,7 +113,7 @@ export function Header({ title, subtitle, back, onBack, right, eyebrow }: { titl
       {eyebrow ? <RNText className="font-semibold text-[11px] text-gold" style={{ letterSpacing: 1.8 }}>{eyebrow.toUpperCase()}</RNText> : null}
       <View className="flex-row items-center justify-between gap-4">
         <View className="flex-1">
-          <Text size="xl" serif>{title}</Text>
+          <Text size="xl" weight="700">{title}</Text>
           {subtitle ? <Text size="sm" muted style={{ marginTop: 2 }}>{subtitle}</Text> : null}
         </View>
         {right}
@@ -129,7 +129,7 @@ export function SectionHeader({ title, action, onAction }: { title: string; acti
     <View className="mt-4 flex-row items-center justify-between">
       <View className="flex-row items-center gap-2">
         <View className="h-[18px] w-[3px] rounded-sm bg-gold" />
-        <Text size="lg" serif>{title}</Text>
+        <Text size="lg" weight="700">{title}</Text>
       </View>
       {action ? <Pressable onPress={onAction} hitSlop={10}><Text size="sm" color={t.primary} weight="600">{action}</Text></Pressable> : null}
     </View>
@@ -230,7 +230,7 @@ export function Button({ title, onPress, loading, disabled, variant = 'primary',
   icon?: keyof typeof Ionicons.glyphMap;
 }) {
   const t = useTheme();
-  const fg = variant === 'primary' ? '#06231F' : variant === 'dark' ? '#FFFFFF' : variant === 'danger' ? t.error : t.text;
+  const fg = variant === 'primary' || variant === 'dark' ? '#F7F5ED' : variant === 'danger' ? t.error : t.text;
   const border = variant === 'ghost' ? t.border : variant === 'danger' ? t.error : variant === 'dark' ? t.gold : 'transparent';
   const content = loading ? <ActivityIndicator color={fg} /> : (
     <View className="flex-row items-center gap-2">
@@ -242,10 +242,7 @@ export function Button({ title, onPress, loading, disabled, variant = 'primary',
   return (
     <Press onPress={() => { tap(); onPress(); }} disabled={disabled || loading} label={title}
       className="min-h-[50px] items-center justify-center rounded-md py-3.5"
-      style={variant === 'primary' ? { ...base, ...shadow, shadowColor: '#0F766E', shadowOpacity: 0.25, overflow: 'hidden' } : { ...base, backgroundColor: variant === 'dark' ? t.primaryDark : 'transparent' }}>
-      {variant === 'primary' ? (
-        <LinearGradient colors={['#2DD4BF', '#14B8A6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-      ) : null}
+      style={variant === 'primary' ? { ...base, ...shadow, backgroundColor: t.primaryDark } : { ...base, backgroundColor: variant === 'dark' ? t.primaryDark : 'transparent' }}>
       {content}
     </Press>
   );

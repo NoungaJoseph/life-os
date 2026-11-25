@@ -4,7 +4,7 @@ import { pickDue, PrefRow, ReminderRow, todayFor } from './reminders';
 import { contributionDates } from './group-savings';
 
 const EXPO_PUSH = 'https://exp.host/--/api/v2/push/send';
-const DEFAULT_PREFS: PrefRow = { quiet_start: '21:30', quiet_end: '07:00', max_per_day: 6, push_enabled: true };
+const DEFAULT_PREFS: PrefRow = { quiet_start: '23:00', quiet_end: '07:00', max_per_day: 6, push_enabled: true };
 
 /** One scheduler tick: find reminders due now and send them through Expo's push service. Uses the service role because no user is signed in. */
 export async function dispatchDueReminders(now = new Date()): Promise<number> {

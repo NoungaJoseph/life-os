@@ -10,19 +10,22 @@ import {
 } from '../src/components/ui';
 import { currencyLabel, formatNumber } from '../src/i18n';
 import { api } from '../src/lib/api';
-import { prettyDate } from '../src/lib/dates';
+import { addDays, prettyDate } from '../src/lib/dates';
 import { errorMessage } from '../src/lib/errors';
 import { markEveningCheckinDone } from '../src/lib/eveningCheckin';
 import { localDateKey } from '../src/lib/eveningCheckinLogic';
 import { useDashboard, useGoalsOverview, useRefreshAll, useToggleHabit, useToggleTask } from '../src/lib/hooks';
 import { categoryLabel } from '../src/lib/modules';
 import { parseMoneyInput } from '../src/lib/moneyInput';
-import { GoalView } from '../src/lib/types';
+import { GoalView, Task } from '../src/lib/types';
 import { useTheme } from '../src/theme/useTheme';
 
 type ExpenseRow = { id: string; amount: number; category: string; description: string | null; currency?: string; spent_on: string };
 type IncomeRow = { id: string; amount: number; source: string | null; category: string | null; currency?: string; received_on: string };
 type DailyReviewRow = { id: string; review_date: string; wins: string | null; lessons: string | null; tomorrow_priorities: string | null; rating: number | null };
+type FoodLogRow = { id: string; meal_type: string; description: string };
+type CalendarEventRow = { id: string; title: string; starts_at: string; location?: string | null };
+type MealPlanRow = { id: string; meal_type: string; custom_name: string | null };
 
 const EXPENSE_CATS = ['food', 'transport', 'housing', 'bills', 'health', 'education', 'business', 'leisure', 'other'] as const;
 const GOAL_ORDER = ['daily', 'weekly', 'monthly', 'quarterly', 'annual', 'long_term'];
@@ -40,9 +43,15 @@ export default function EveningCheckin() {
   const toggleTask = useToggleTask();
 
   const today = dash.data?.date ?? localDateKey();
+  const tomorrowDate = addDays(today, 1);
   const expensesQ = useQuery({ queryKey: ['evening-expenses', today], queryFn: () => api<ExpenseRow[]>(`/expenses?from=${today}&to=${today}&pageSize=100`) });
   const incomeQ = useQuery({ queryKey: ['evening-income', today], queryFn: () => api<IncomeRow[]>(`/income?from=${today}&to=${today}&pageSize=100`) });
   const reviewQ = useQuery({ queryKey: ['evening-review', today], queryFn: () => api<DailyReviewRow[]>(`/daily-reviews?from=${today}&to=${today}&pageSize=10`) });
+  const foodLogsQ = useQuery({ queryKey: ['food-logs', today], queryFn: () => api<FoodLogRow[]>(`/food-logs?from=${today}&to=${today}&pageSize=50`) });
+  const tomorrowTasksQ = useQuery({ queryKey: ['tasks', tomorrowDate], queryFn: () => api<Task[]>(`/tasks?from=${tomorrowDate}&to=${tomorrowDate}&pageSize=50`) });
+  const tomorrowEventsQ = useQuery({ queryKey: ['calendar-events', tomorrowDate], queryFn: () => api<CalendarEventRow[]>(`/calendar-events?from=${tomorrowDate}&to=${tomorrowDate}&pageSize=50`) });
+  const tomorrowMealsQ = useQuery({ queryKey: ['meal-plans', tomorrowDate], queryFn: () => api<MealPlanRow[]>(`/meal-plans?from=${tomorrowDate}&to=${tomorrowDate}&pageSize=20`) });
+  const [tomorrowBreakfast, setTomorrowBreakfast] = useState('');
 
   const [step, setStep] = useState(0);
   const [completed, setCompleted] = useState(false);
@@ -131,9 +140,22 @@ export default function EveningCheckin() {
     onError: (e) => setErr(errorMessage(e, t)),
   });
 
+  const planTomorrowBreakfast = useMutation({
+    mutationFn: () => api('/meal-plans', {
+      method: 'POST',
+      body: { plan_date: tomorrowDate, meal_type: 'breakfast', custom_name: tomorrowBreakfast.trim() },
+    }),
+    onSuccess: () => {
+      success();
+      setTomorrowBreakfast('');
+      void qc.invalidateQueries({ queryKey: ['meal-plans', tomorrowDate] });
+    },
+    onError: (e) => setErr(errorMessage(e, t)),
+  });
+
   const finishRundown = useMutation({
-    mutationFn: () =>
-      api('/daily-reviews', {
+    mutationFn: async () => {
+      const review = await api('/daily-reviews', {
         method: 'POST',
         body: {
           review_date: today,
@@ -142,7 +164,15 @@ export default function EveningCheckin() {
           ...(currentLessons.trim() ? { lessons: currentLessons.trim() } : {}),
           ...(currentTomorrow.trim() ? { tomorrow_priorities: currentTomorrow.trim() } : {}),
         },
-      }),
+      });
+      if (currentTomorrow.trim()) {
+        await api('/daily-schedules', {
+          method: 'POST',
+          body: { schedule_date: tomorrowDate, main_priority: currentTomorrow.trim().slice(0, 200) },
+        }).catch(() => undefined);
+      }
+      return review;
+    },
     onSuccess: async () => {
       await markEveningCheckinDone(today);
       success();
@@ -186,9 +216,11 @@ export default function EveningCheckin() {
         </Hero>
         <Card className="gap-2">
           <View className="flex-row justify-between"><Text muted>{t('eveningCheckin.steps.habits')}</Text><Text weight="700">{habitsDone}/{d.habits.length}</Text></View>
+          <View className="flex-row justify-between"><Text muted>{t('eveningCheckin.mealsToday')}</Text><Text weight="700">{(foodLogsQ.data ?? []).length}</Text></View>
           <View className="flex-row justify-between"><Text muted>{t('eveningCheckin.spentToday')}</Text><Text weight="700">{formatNumber(totalSpent)} {currencyLabel('XAF')}</Text></View>
           <View className="flex-row justify-between"><Text muted>{t('eveningCheckin.incomeToday')}</Text><Text weight="700">{formatNumber(totalIncome)} {currencyLabel('XAF')}</Text></View>
         </Card>
+        <Button title={t('eveningCheckin.viewHistory')} variant="ghost" icon="time-outline" onPress={() => router.replace({ pathname: '/review', params: { tab: 'daily' } })} />
         <Button title={t('eveningCheckin.backHome')} onPress={() => router.replace('/')} />
       </Screen>
     );
@@ -391,6 +423,50 @@ export default function EveningCheckin() {
           <Field label={t('eveningCheckin.winsLabel')} multiline value={currentWins} onChangeText={setWins} />
           <Field label={t('eveningCheckin.lessonsLabel')} multiline value={currentLessons} onChangeText={setLessons} />
           <Field label={t('eveningCheckin.tomorrowLabel')} multiline value={currentTomorrow} onChangeText={setTomorrow} />
+
+          <SectionHeader title={t('eveningCheckin.tomorrowPreviewTitle')} />
+          <Card className="gap-3">
+            <Text size="xs" muted>{prettyDate(tomorrowDate)}</Text>
+            {(tomorrowEventsQ.data ?? []).length === 0 && (tomorrowTasksQ.data ?? []).length === 0 ? (
+              <Text size="sm" muted>{t('eveningCheckin.tomorrowEmpty')}</Text>
+            ) : (
+              <>
+                {(tomorrowEventsQ.data ?? []).map((ev) => (
+                  <View key={ev.id} className="flex-row items-center justify-between">
+                    <Text size="sm" style={{ flex: 1 }}>{ev.title}</Text>
+                    <Text size="xs" muted>{ev.starts_at.slice(11, 16)}</Text>
+                  </View>
+                ))}
+                {(tomorrowTasksQ.data ?? []).map((task) => (
+                  <View key={task.id} className="flex-row items-center justify-between">
+                    <Text size="sm" style={{ flex: 1 }}>{task.title}</Text>
+                    <Pill label={t(`newTask.priorities.${task.priority}`)} tone={task.priority === 'high' ? 'error' : 'neutral'} />
+                  </View>
+                ))}
+              </>
+            )}
+            {(tomorrowMealsQ.data ?? []).length > 0 && (
+              <View className="gap-1">
+                <Text size="xs" weight="600" muted>{t('eveningCheckin.tomorrowMealsPlanned')}</Text>
+                {(tomorrowMealsQ.data ?? []).map((m) => (
+                  <Text key={m.id} size="sm">{t(`modules.opt.${m.meal_type}`)}: {m.custom_name || '—'}</Text>
+                ))}
+              </View>
+            )}
+            <Field
+              label={t('eveningCheckin.planTomorrowBreakfast')}
+              value={tomorrowBreakfast}
+              onChangeText={setTomorrowBreakfast}
+              placeholder={t('morningPlan.mealInputPlaceholder')}
+            />
+            <Button
+              title={t('morningPlan.setPlanBtn')}
+              variant="ghost"
+              disabled={!tomorrowBreakfast.trim()}
+              loading={planTomorrowBreakfast.isPending}
+              onPress={() => planTomorrowBreakfast.mutate()}
+            />
+          </Card>
         </View>
       )}
 

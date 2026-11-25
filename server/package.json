@@ -11,7 +11,9 @@
     "test": "node --import tsx --test src/**/*.test.ts",
     "test:api": "node dev/run-api-test.mjs",
     "demo:server": "tsx dev/fake-db-server.cts",
-    "reconcile:ledger": "tsx dev/reconcile-ledger.ts"
+    "reconcile:ledger": "tsx dev/reconcile-ledger.ts",
+    "db:migrate": "npx supabase --workdir .. db push --include-all",
+    "db:migrate:dry": "npx supabase --workdir .. db push --include-all --dry-run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

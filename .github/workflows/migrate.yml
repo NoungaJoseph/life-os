@@ -1,0 +1,98 @@
+name: Database Migrations
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/config.toml'
+      - 'server/**'
+      - '.github/workflows/migrate.yml'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Preview pending migrations without applying them'
+        required: false
+        type: boolean
+        default: false
+      repair_applied:
+        description: 'Optional one-time baseline: "all" or comma-separated migration timestamps already run manually in Supabase SQL Editor'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-migrations
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Push Supabase migrations
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check required secrets
+        shell: bash
+        run: |
+          missing=()
+          [ -n "$SUPABASE_ACCESS_TOKEN" ] || missing+=("SUPABASE_ACCESS_TOKEN")
+          [ -n "$SUPABASE_PROJECT_REF" ] || missing+=("SUPABASE_PROJECT_REF")
+          [ -n "$SUPABASE_DB_PASSWORD" ] || missing+=("SUPABASE_DB_PASSWORD")
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "Missing GitHub Actions secrets in Settings -> Secrets and variables -> Actions: ${missing[*]}"
+            exit 1
+          fi
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link remote Supabase project
+        shell: bash
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+
+      - name: Record pre-applied migrations (manual baseline)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.repair_applied != '' }}
+        shell: bash
+        env:
+          REPAIR_APPLIED: ${{ inputs.repair_applied }}
+        run: |
+          set -euo pipefail
+          versions=()
+          if [ "$REPAIR_APPLIED" = "all" ]; then
+            for f in supabase/migrations/*.sql; do
+              [ -e "$f" ] || continue
+              versions+=("$(basename "$f" | cut -d_ -f1)")
+            done
+          else
+            IFS=', ' read -r -a raw_versions <<< "$REPAIR_APPLIED"
+            for v in "${raw_versions[@]}"; do
+              [ -n "$v" ] && versions+=("$v")
+            done
+          fi
+          for ver in "${versions[@]}"; do
+            if ! [[ "$ver" =~ ^[0-9]+$ ]]; then
+              echo "Invalid migration timestamp: $ver"
+              exit 1
+            fi
+            supabase migration repair --status applied "$ver"
+          done
+
+      - name: Push pending migrations
+        shell: bash
+        env:
+          DRY_RUN: ${{ inputs.dry_run || false }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            supabase db push --include-all --dry-run
+          else
+            supabase db push --include-all
+          fi

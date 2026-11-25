@@ -7,13 +7,16 @@ import { ScrollView, View, useWindowDimensions } from 'react-native';
 import { BalanceBar, GoalRow, InsightCard } from '../../src/components/domain';
 import { FirstVisitTip } from '../../src/components/Tutorial';
 import {
-  Card, Check, EmptyState, ErrorState, FadeIn, Hero, IconBadge, Loading, Pill, Press, ProgressBar, ProgressRing, Screen, SectionHeader, Text,
+  Card, Check, EmptyState, ErrorState, FadeIn, IconBadge, Loading, Pill, Press, ProgressBar, Screen, SectionHeader, Text,
 } from '../../src/components/ui';
 import { prettyDate } from '../../src/lib/dates';
 import { errorMessage } from '../../src/lib/errors';
 import { useEveningCheckinState } from '../../src/lib/eveningCheckin';
 import { isInEveningWindow, localDateKey } from '../../src/lib/eveningCheckinLogic';
+import { isMorningWindow } from '../../src/lib/routineLogic';
+import { useRoutineState } from '../../src/lib/routineNotifications';
 import { useDashboard, useToggleHabit, useToggleTask } from '../../src/lib/hooks';
+import { useLock } from '../../src/lib/lock';
 import { spacing } from '../../src/theme/tokens';
 import { useTheme } from '../../src/theme/useTheme';
 
@@ -26,21 +29,26 @@ export default function Home() {
   const toggleTask = useToggleTask();
   const toggleHabit = useToggleHabit();
   const evening = useEveningCheckinState();
+  const routine = useRoutineState();
+  const lock = useLock();
 
   if (q.isLoading) return <Loading />;
   if (q.error || !q.data) return <Screen><ErrorState message={q.error ? errorMessage(q.error, tr) : tr('home.loadError')} onRetry={() => void q.refetch()} /></Screen>;
   const d = q.data;
   const now = new Date();
   const hour = now.getHours();
-  const eveningDone = evening.doneDate === localDateKey(now);
+  const todayKey = localDateKey(now);
+  const eveningDone = evening.doneDate === todayKey;
   const eveningOpen = isInEveningWindow(now, evening.time);
+  const morningDone = routine.morningDoneDate === todayKey;
+  const morningOpen = isMorningWindow(now, routine.morningTime);
   const hello = tr(hour < 12 ? 'home.morning' : hour < 18 ? 'home.afternoon' : 'home.evening');
   const intentions = tr('home.intentions', { returnObjects: true }) as unknown as string[];
   const intention = intentions[Math.floor(Date.now() / 86_400_000) % intentions.length];
   const hasData = d.priorities.length + d.habits.length + d.goals.length > 0;
   const setup = [
     { key: 'profile', done: true }, { key: 'goal', done: d.goals.length > 0 }, { key: 'habit', done: d.habits.length > 0 },
-    { key: 'money', done: false }, { key: 'pin', done: true },
+    { key: 'money', done: false }, { key: 'pin', done: lock.hasPin === true },
   ] as const;
   const setupDone = setup.filter((item) => item.done).length;
 
@@ -48,22 +56,25 @@ export default function Home() {
     <Screen onRefresh={() => void q.refetch()} refreshing={q.isRefetching} bottomPad={130}>
       <FirstVisitTip screen="home" />
       <FadeIn>
-        <Hero>
-          <View className="flex-row items-center gap-[16px]">
-            <View className="flex-1 gap-[4px]">
-              <Text size="xs" color="#C9A24B" weight="600" style={{ letterSpacing: 1.6 }}>{prettyDate(d.date).toUpperCase()}</Text>
-              <Text size="xl" serif color="#FFFFFF">{tr('home.greeting', { greeting: hello, name: d.display_name ?? tr('home.there') })}</Text>
-              <Text size="sm" color="#C9D6E3">
-                {d.summary.tasks_open > 0 ? tr('home.toDo', { count: d.summary.tasks_open }) : tr('home.nothingPending')} · {tr('home.habitsProgress', { done: d.summary.habits_done, due: d.summary.habits_due })}
-              </Text>
+        <View className="gap-4 border-b border-line pb-5">
+          <View className="gap-1">
+            <Text size="xs" color={t.gold} weight="600" style={{ letterSpacing: 1.6 }}>{prettyDate(d.date).toUpperCase()}</Text>
+            <Text size="xl" weight="700">{tr('home.greeting', { greeting: hello, name: d.display_name ?? tr('home.there') })}</Text>
+            <Text size="sm" muted>
+              {d.summary.tasks_open > 0 ? tr('home.toDo', { count: d.summary.tasks_open }) : tr('home.nothingPending')} · {tr('home.habitsProgress', { done: d.summary.habits_done, due: d.summary.habits_due })}
+            </Text>
+          </View>
+          <View className="gap-2 rounded-md bg-surface-alt px-4 py-3">
+            <View className="flex-row items-end justify-between gap-4">
+              <View className="flex-1">
+                <Text size="xs" muted weight="600" style={{ letterSpacing: 1.2 }}>{tr('home.momentum')}</Text>
+                <Text size="xs" muted numberOfLines={1}>{intention}</Text>
+              </View>
+              <Text size="lg" weight="700">{d.momentum ?? '—'}{d.momentum !== null ? '%' : ''}</Text>
             </View>
-            <ProgressRing value={(d.momentum ?? 0) / 100} size={104} count={d.momentum} label="–" sublabel={tr('home.momentum')}
-              trackColor="rgba(255,255,255,0.16)" color="#2DD4BF" textColor="#FFFFFF" />
+            <ProgressBar value={(d.momentum ?? 0) / 100} tone="accent" height={5} />
           </View>
-          <View className="mt-4 border-t border-white/10 pt-4">
-            <Text size="sm" color="#E9D9A6" style={{ fontStyle: 'italic', fontFamily: 'PlayfairDisplay_600SemiBold' }}>“{intention}”</Text>
-          </View>
-        </Hero>
+        </View>
       </FadeIn>
       {d.momentum === null && <Text size="xs" muted>{tr('home.momentumHint')}</Text>}
 
@@ -86,6 +97,23 @@ export default function Home() {
           </ScrollView>
         </FadeIn>
       )}
+
+      <FadeIn delay={95}>
+        <Card onPress={() => router.push('/morning-plan')} className="flex-row items-center gap-3">
+          <IconBadge icon={morningDone ? 'checkmark-circle' : 'sunny'} tone={morningDone ? 'success' : morningOpen ? 'accent' : 'info'} size={40} />
+          <View className="flex-1">
+            <Text weight="600">{tr('home.morningPlanTitle')}</Text>
+            <Text size="xs" muted>{tr(morningDone ? 'home.morningPlanDone' : 'home.morningPlanBody')}</Text>
+          </View>
+          {morningDone ? (
+            <Pill label={tr('home.rundownDonePill')} tone="success" />
+          ) : morningOpen ? (
+            <Pill label={tr('home.rundownNowPill')} tone="accent" />
+          ) : (
+            <Ionicons name="chevron-forward" size={18} color={t.textSecondary} />
+          )}
+        </Card>
+      </FadeIn>
 
       <FadeIn delay={100}>
         <Card onPress={() => router.push('/evening-checkin')} className="flex-row items-center gap-3">

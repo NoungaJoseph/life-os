@@ -22,7 +22,12 @@ export function LockProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!uid) { setHasPin(null); setLocked(false); return; }
     setHasPin(null);
-    hasLocalPin(uid).then(setHasPin);
+    hasLocalPin(uid).then((exists) => {
+      setHasPin(exists);
+      // A persisted session must never reveal app content before the local PIN.
+      // pinCreated() explicitly unlocks the first session after setup.
+      if (exists) setLocked(true);
+    });
   }, [uid]);
 
   useEffect(() => {

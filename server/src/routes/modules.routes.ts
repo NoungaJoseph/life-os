@@ -139,7 +139,7 @@ const prefsBody = z.object({
   quiet_start: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), quiet_end: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   max_per_day: z.number().int().min(0).max(20), push_enabled: z.boolean(),
 }).partial().strict();
-const PREF_DEFAULTS = { quiet_start: '21:30', quiet_end: '07:00', max_per_day: 6, push_enabled: true };
+const PREF_DEFAULTS = { quiet_start: '23:00', quiet_end: '07:00', max_per_day: 6, push_enabled: true };
 modulesRouter.get('/notification-preferences', asyncHandler(async (req, res) => {
   const { data, error } = await req.db!.from('notification_preferences').select('*').eq('user_id', req.userId!).maybeSingle();
   if (error) throw dbFail(error);

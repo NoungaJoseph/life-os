@@ -27,6 +27,7 @@ import { savingsRouter } from './savings.routes';
 import { familySavingsRouter } from './family-savings.routes';
 import { transformationRouter } from './transformation.routes';
 import { screenTimeRouter } from './screen-time.routes';
+import { reportsRouter } from './reports.routes';
 
 export const v1Router = Router();
 
@@ -91,3 +92,4 @@ v1Router.get('/goals/:id', validate(uuidParam, 'params'), asyncHandler(async (re
 v1Router.use(plannerRouter);
 v1Router.use(smartRouter);
 v1Router.use(modulesRouter);
+v1Router.use(reportsRouter);

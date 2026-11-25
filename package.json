@@ -8,6 +8,8 @@
     "dev:server": "npm run dev --workspace server",
     "build:server": "npm run build --workspace server",
     "typecheck": "npm run typecheck --workspace server",
-    "dev:web": "cd apps/web && npm run dev"
+    "dev:web": "cd apps/web && npm run dev",
+    "db:migrate": "npx supabase db push --include-all",
+    "db:migrate:dry": "npx supabase db push --include-all --dry-run"
   }
 }

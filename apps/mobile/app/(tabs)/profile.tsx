@@ -10,7 +10,6 @@ import { useInsights } from '../../src/lib/hooks';
 import { useSession } from '../../src/lib/session';
 import { signOutDevice } from '../../src/lib/signOut';
 import { Profile } from '../../src/lib/types';
-import { spacing } from '../../src/theme/tokens';
 
 const hour = (h: number) => `${String(h).padStart(2, '0')}:00`;
 
@@ -66,14 +65,14 @@ export default function ProfileScreen() {
 
       <SectionHeader title={tr('profile.more')} />
       <Button title={tr('guide.title')} variant="ghost" icon="help-circle-outline" onPress={() => router.push('/guide')} />
+      <Button title={tr('profile.morningPlan')} variant="ghost" icon="sunny-outline" onPress={() => router.push('/morning-plan')} />
       <Button title={tr('profile.eveningCheckin')} variant="ghost" icon="moon-outline" onPress={() => router.push('/evening-checkin')} />
+      <Button title={tr('profile.monthlyReport')} variant="ghost" icon="document-text-outline" onPress={() => router.push({ pathname: '/review', params: { tab: 'report' } })} />
       <Button title={tr('profile.journal')} variant="ghost" icon="book-outline" onPress={() => router.push('/journal')} />
       <Button title={tr('profile.coach')} variant="ghost" icon="sparkles-outline" onPress={() => router.push('/coach')} />
       <Button title={tr('profile.review')} variant="ghost" icon="calendar-number-outline" onPress={() => router.push('/review')} />
       <Button title={tr('transformation.title')} variant="ghost" icon="leaf-outline" onPress={() => router.push('/transformation')} />
       <Button title={tr('screenTime.title')} variant="ghost" icon="hourglass-outline" onPress={() => router.push('/screen-time')} />
-      <Button title={tr('profile.finance')} variant="ghost" icon="wallet-outline" onPress={() => router.push('/finance')} />
-      <Button title={tr('wallet.profileButton')} variant="ghost" icon="card-outline" onPress={() => router.push('/wallet')} />
       <Button title={tr('profile.settings')} variant="ghost" icon="settings-outline" onPress={() => router.push('/settings')} />
       <Button title={tr('profile.sessions')} variant="ghost" icon="phone-portrait-outline" onPress={() => router.push('/sessions')} />
       <Button title={tr('profile.signOut')} variant="danger" icon="log-out-outline" onPress={() => { void signOutDevice().then(() => router.replace('/login')); }} />

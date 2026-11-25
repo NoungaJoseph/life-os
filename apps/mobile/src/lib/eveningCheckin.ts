@@ -4,6 +4,7 @@ import {
   SchedulableTriggerInputTypes,
   cancelScheduledNotificationAsync,
   getPermissionsAsync,
+  requestPermissionsAsync,
   scheduleNotificationAsync,
   setNotificationChannelAsync,
 } from 'expo-notifications';
@@ -139,7 +140,7 @@ export function isEveningPromptDue(s: EveningCheckinState, now = new Date()): bo
   });
 }
 
-export async function syncEveningCheckinNotification(title: string, body: string): Promise<void> {
+export async function syncEveningCheckinNotification(title: string, body: string, requestIfNeeded = false): Promise<void> {
   if (Platform.OS === 'web') return;
   try {
     const existingId = await AsyncStorage.getItem(NOTIF_ID_KEY);
@@ -150,8 +151,11 @@ export async function syncEveningCheckinNotification(title: string, body: string
     const current = state.loaded ? state : await loadEveningCheckinState();
     if (!current.enabled) return;
 
-    const perms = await getPermissionsAsync();
-    if (perms.status !== 'granted') return;
+    let { status } = await getPermissionsAsync();
+    if (status !== 'granted' && requestIfNeeded) {
+      status = (await requestPermissionsAsync()).status;
+    }
+    if (status !== 'granted') return;
 
     if (Platform.OS === 'android') {
       await setNotificationChannelAsync('default', {
