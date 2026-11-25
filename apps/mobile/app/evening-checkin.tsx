@@ -26,6 +26,25 @@ type DailyReviewRow = { id: string; review_date: string; wins: string | null; le
 type FoodLogRow = { id: string; meal_type: string; description: string };
 type CalendarEventRow = { id: string; title: string; starts_at: string; location?: string | null };
 type MealPlanRow = { id: string; meal_type: string; custom_name: string | null };
+type QuitBehaviorRow = {
+  id: string;
+  area_id: string;
+  area_title: string;
+  reason: string;
+  title: string;
+  target_days: number | null;
+  reward_text: string;
+  progress: {
+    current: number;
+    best: number;
+    target_days: number | null;
+    progress_pct: number;
+    days_remaining: number | null;
+    latest_milestone: number | null;
+    goal_achieved: boolean;
+    today_status: 'urge' | 'relapse' | 'success' | null;
+  };
+};
 
 const EXPENSE_CATS = ['food', 'transport', 'housing', 'bills', 'health', 'education', 'business', 'leisure', 'other'] as const;
 const GOAL_ORDER = ['daily', 'weekly', 'monthly', 'quarterly', 'annual', 'long_term'];
@@ -51,6 +70,8 @@ export default function EveningCheckin() {
   const tomorrowTasksQ = useQuery({ queryKey: ['tasks', tomorrowDate], queryFn: () => api<Task[]>(`/tasks?from=${tomorrowDate}&to=${tomorrowDate}&pageSize=50`) });
   const tomorrowEventsQ = useQuery({ queryKey: ['calendar-events', tomorrowDate], queryFn: () => api<CalendarEventRow[]>(`/calendar-events?from=${tomorrowDate}&to=${tomorrowDate}&pageSize=50`) });
   const tomorrowMealsQ = useQuery({ queryKey: ['meal-plans', tomorrowDate], queryFn: () => api<MealPlanRow[]>(`/meal-plans?from=${tomorrowDate}&to=${tomorrowDate}&pageSize=20`) });
+  const quitQ = useQuery({ queryKey: ['quit-behaviors-active'], queryFn: () => api<QuitBehaviorRow[]>('/transformation/quit-behaviors/active') });
+  const [quitFeedback, setQuitFeedback] = useState<Record<string, 'success' | 'urge' | 'relapse'>>({});
   const [tomorrowBreakfast, setTomorrowBreakfast] = useState('');
 
   const [step, setStep] = useState(0);
@@ -149,6 +170,19 @@ export default function EveningCheckin() {
       success();
       setTomorrowBreakfast('');
       void qc.invalidateQueries({ queryKey: ['meal-plans', tomorrowDate] });
+    },
+    onError: (e) => setErr(errorMessage(e, t)),
+  });
+
+  const logQuitEvent = useMutation({
+    mutationFn: ({ behaviorId, kind }: { behaviorId: string; kind: 'success' | 'urge' | 'relapse' }) =>
+      api(`/transformation/behaviors/${behaviorId}/events`, { method: 'POST', body: { kind } }),
+    onSuccess: (_data, vars) => {
+      if (vars.kind === 'success') success();
+      setQuitFeedback((prev) => ({ ...prev, [vars.behaviorId]: vars.kind }));
+      setErr(null);
+      void qc.invalidateQueries({ queryKey: ['quit-behaviors-active'] });
+      void qc.invalidateQueries({ queryKey: ['transformation'] });
     },
     onError: (e) => setErr(errorMessage(e, t)),
   });
@@ -320,6 +354,69 @@ export default function EveningCheckin() {
                 </View>
               ))}
             </Card>
+          )}
+
+          {(quitQ.data ?? []).length > 0 && (
+            <View className="gap-3">
+              <SectionHeader title={t('eveningCheckin.quitFollowupTitle')} />
+              <Text size="xs" muted>{t('eveningCheckin.quitFollowupHint')}</Text>
+              {(quitQ.data ?? []).map((qb) => {
+                const status = quitFeedback[qb.id] ?? qb.progress.today_status;
+                const p = qb.progress;
+                return (
+                  <Card key={qb.id} className="gap-2.5">
+                    <View className="flex-row items-start justify-between gap-2">
+                      <View className="flex-1 gap-0.5">
+                        <Text weight="700">{qb.title}</Text>
+                        {qb.area_title ? <Text size="xs" muted>{qb.area_title}</Text> : null}
+                      </View>
+                      <Pill
+                        label={p.target_days ? t('transformation.streakProgress', { current: p.current, target: p.target_days }) : t('transformation.days', { count: p.current })}
+                        tone={p.goal_achieved ? 'success' : 'info'}
+                      />
+                    </View>
+                    {p.target_days ? <ProgressBar value={p.current / p.target_days} tone={p.goal_achieved ? 'success' : 'info'} /> : null}
+                    {qb.reward_text ? (
+                      <Text size="xs" color={theme.gold}>{t('transformation.rewardShow', { reward: qb.reward_text })}</Text>
+                    ) : null}
+                    {p.goal_achieved && p.target_days ? (
+                      <Hero colors={['#0F766E', '#14B8A6']}>
+                        <Text size="xs" weight="700" color="#FFFFFF">{t('transformation.goalAchievedTitle')}</Text>
+                        <Text size="xs" color="#E6FFFB">{t('transformation.goalAchievedBody', { target: p.target_days })}</Text>
+                      </Hero>
+                    ) : null}
+                    {status === 'success' ? <Pill label={t('eveningCheckin.quitCleanLogged')} tone="success" /> : null}
+                    {status === 'urge' ? <Pill label={t('eveningCheckin.quitUrgeLogged')} tone="info" /> : null}
+                    {status === 'relapse' ? <Pill label={t('eveningCheckin.quitSlipLogged')} tone="warning" /> : null}
+                    <Button
+                      title={t('eveningCheckin.quitStayedClean')}
+                      variant={status === 'success' ? 'ghost' : 'primary'}
+                      icon="checkmark-circle-outline"
+                      loading={logQuitEvent.isPending && logQuitEvent.variables?.behaviorId === qb.id && logQuitEvent.variables.kind === 'success'}
+                      onPress={() => logQuitEvent.mutate({ behaviorId: qb.id, kind: 'success' })}
+                    />
+                    <Row gap={8}>
+                      <View className="flex-1">
+                        <Button
+                          title={t('eveningCheckin.quitHadUrge')}
+                          variant="ghost"
+                          loading={logQuitEvent.isPending && logQuitEvent.variables?.behaviorId === qb.id && logQuitEvent.variables.kind === 'urge'}
+                          onPress={() => logQuitEvent.mutate({ behaviorId: qb.id, kind: 'urge' })}
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Button
+                          title={t('eveningCheckin.quitSlipped')}
+                          variant="ghost"
+                          loading={logQuitEvent.isPending && logQuitEvent.variables?.behaviorId === qb.id && logQuitEvent.variables.kind === 'relapse'}
+                          onPress={() => logQuitEvent.mutate({ behaviorId: qb.id, kind: 'relapse' })}
+                        />
+                      </View>
+                    </Row>
+                  </Card>
+                );
+              })}
+            </View>
           )}
         </View>
       )}

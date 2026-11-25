@@ -18,21 +18,43 @@ export default function Unlock() {
   const router = useRouter();
   const th = useTheme();
   const { session } = useSession();
-  const { unlock } = useLock();
+  const { unlock, requirePinSetup } = useLock();
   const profile = useQuery({ queryKey: ['profile'], queryFn: () => api<Profile>('/profile'), enabled: !!session });
   const [error, setError] = useState<string | null>(null);
   const [reset, setReset] = useState(0);
   const [locked, setLocked] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const name = (profile.data as any)?.first_name ?? profile.data?.display_name ?? '';
   const initials = (name || '?').trim().slice(0, 1).toUpperCase();
 
   const entered = async (pin: string) => {
-    const r = await verifyLocalPin(session!.user.id, pin);
-    if (r.ok) { success(); unlock(); router.replace('/'); return; }
-    setReset((n) => n + 1);
-    if (r.locked) { setLocked(true); setError(t('auth.pin.locked')); setTimeout(() => void signOutDevice().then(() => router.replace('/login')), 1800); return; }
-    setError(t('auth.pin.wrong', { n: r.triesLeft }));
+    if (busy || locked || !session) return;
+    setBusy(true);
+    try {
+      const r = await verifyLocalPin(session.user.id, pin);
+      if (r.ok) {
+        success();
+        unlock();
+        router.replace('/');
+        return;
+      }
+      setReset((n) => n + 1);
+      if (r.missing) {
+        requirePinSetup();
+        router.replace('/create-pin');
+        return;
+      }
+      if (r.locked) {
+        setLocked(true);
+        setError(t('auth.pin.locked'));
+        setTimeout(() => void signOutDevice().then(() => router.replace('/login')), 1800);
+        return;
+      }
+      setError(t('auth.pin.wrong', { n: r.triesLeft }));
+    } finally {
+      setBusy(false);
+    }
   };
   const forgot = () => {
     const go = () => void signOutDevice().then(() => router.replace('/login'));
@@ -47,7 +69,7 @@ export default function Unlock() {
         <Text size="xl" serif weight="700">{t('auth.pin.unlockTitle', { name })}</Text>
         <Text muted size="sm">{t('auth.pin.unlockBody')}</Text>
       </View>
-      <View className="mt-6"><PinPad onComplete={(p) => void entered(p)} resetKey={reset} disabled={locked} /></View>
+      <View className="mt-6"><PinPad onComplete={(p) => void entered(p)} resetKey={reset} disabled={locked || busy} /></View>
       <View className="min-h-[24px] items-center"><ErrorText message={error} /></View>
       <Press onPress={forgot} className="items-center py-2"><Text weight="600" color="#12A594">{t('auth.pin.forgot')}</Text></Press>
     </Screen>

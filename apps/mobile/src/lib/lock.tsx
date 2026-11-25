@@ -7,8 +7,26 @@ import { useSession } from './session';
 export type LockAfter = 0 | 1 | 5;           // minutes in the background before the PIN is asked again
 const KEY = 'mylifeos-lock-after';
 
-type Ctx = { locked: boolean; hasPin: boolean | null; unlock: () => void; pinCreated: () => void; lockAfter: LockAfter; setLockAfter: (m: LockAfter) => void; lockNow: () => void };
-const LockCtx = createContext<Ctx>({ locked: false, hasPin: null, unlock: () => {}, pinCreated: () => {}, lockAfter: 1, setLockAfter: () => {}, lockNow: () => {} });
+type Ctx = {
+  locked: boolean;
+  hasPin: boolean | null;
+  unlock: () => void;
+  pinCreated: () => void;
+  requirePinSetup: () => void;
+  lockAfter: LockAfter;
+  setLockAfter: (m: LockAfter) => void;
+  lockNow: () => void;
+};
+const LockCtx = createContext<Ctx>({
+  locked: false,
+  hasPin: null,
+  unlock: () => {},
+  pinCreated: () => {},
+  requirePinSetup: () => {},
+  lockAfter: 1,
+  setLockAfter: () => {},
+  lockNow: () => {},
+});
 
 export function LockProvider({ children }: { children: React.ReactNode }) {
   const { session } = useSession();
@@ -18,11 +36,23 @@ export function LockProvider({ children }: { children: React.ReactNode }) {
   const [lockAfter, setAfter] = useState<LockAfter>(1);
   const leftAt = useRef<number | null>(null);
 
-  useEffect(() => { AsyncStorage.getItem(KEY).then((v) => { if (v === '0' || v === '1' || v === '5') setAfter(Number(v) as LockAfter); }).catch(() => undefined); }, []);
   useEffect(() => {
-    if (!uid) { setHasPin(null); setLocked(false); return; }
+    AsyncStorage.getItem(KEY)
+      .then((v) => {
+        if (v === '0' || v === '1' || v === '5') setAfter(Number(v) as LockAfter);
+      })
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    if (!uid) {
+      setHasPin(null);
+      setLocked(false);
+      leftAt.current = null;
+      return;
+    }
     setHasPin(null);
-    hasLocalPin(uid).then((exists) => {
+    void hasLocalPin(uid).then((exists) => {
       setHasPin(exists);
       // A persisted session must never reveal app content before the local PIN.
       // pinCreated() explicitly unlocks the first session after setup.
@@ -32,7 +62,10 @@ export function LockProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (s) => {
-      if (s === 'background' || s === 'inactive') { if (leftAt.current === null) leftAt.current = Date.now(); return; }
+      if (s === 'background' || s === 'inactive') {
+        if (leftAt.current === null) leftAt.current = Date.now();
+        return;
+      }
       if (s === 'active' && leftAt.current !== null) {
         if (hasPin && Date.now() - leftAt.current >= lockAfter * 60_000) setLocked(true);
         leftAt.current = null;
@@ -42,10 +75,27 @@ export function LockProvider({ children }: { children: React.ReactNode }) {
   }, [lockAfter, hasPin]);
 
   const value: Ctx = {
-    locked, hasPin, lockAfter,
-    unlock: useCallback(() => setLocked(false), []),
-    pinCreated: useCallback(() => { setHasPin(true); setLocked(false); }, []),
-    setLockAfter: (m) => { setAfter(m); void AsyncStorage.setItem(KEY, String(m)).catch(() => undefined); },
+    locked,
+    hasPin,
+    lockAfter,
+    unlock: useCallback(() => {
+      leftAt.current = null;
+      setLocked(false);
+    }, []),
+    pinCreated: useCallback(() => {
+      leftAt.current = null;
+      setHasPin(true);
+      setLocked(false);
+    }, []),
+    requirePinSetup: useCallback(() => {
+      leftAt.current = null;
+      setHasPin(false);
+      setLocked(false);
+    }, []),
+    setLockAfter: (m) => {
+      setAfter(m);
+      void AsyncStorage.setItem(KEY, String(m)).catch(() => undefined);
+    },
     lockNow: useCallback(() => setLocked(true), []),
   };
   return <LockCtx.Provider value={value}>{children}</LockCtx.Provider>;
