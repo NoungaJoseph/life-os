@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +15,7 @@ const RESEND_SECONDS = 30;
 export default function Otp() {
   const { t } = useTranslation();
   const th = useTheme();
+  const qc = useQueryClient();
   const router = useRouter();
   const { unlock } = useLock();
   const { email, resend } = useLocalSearchParams<{ email: string; resend?: string }>();
@@ -38,6 +40,7 @@ export default function Otp() {
       await adoptSession(session);
       endOtpFlow();
       unlock();
+      void qc.invalidateQueries({ queryKey: ['profile'] });
       success();
       router.replace('/onboarding');
     }
@@ -63,7 +66,7 @@ export default function Otp() {
       <ErrorText message={error} />
       {info ? <Text size="sm" color={th.success} style={{ textAlign: 'center' }}>{info}</Text> : null}
       <Press onPress={() => void resendCode()} disabled={wait > 0} className="items-center py-2">
-        <Text weight="600" color={wait > 0 ? th.textSecondary : '#12A594'}>{wait > 0 ? t('auth.otp.resendIn', { s: wait }) : t('auth.otp.resend')}</Text>
+        <Text weight="600" color={wait > 0 ? th.textSecondary : th.primary}>{wait > 0 ? t('auth.otp.resendIn', { s: wait }) : t('auth.otp.resend')}</Text>
       </Press>
       <Press onPress={returnToRegister} className="items-center py-1"><Text size="sm" muted>{t('auth.otp.wrongEmail')}</Text></Press>
     </Screen>

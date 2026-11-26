@@ -1,4 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -10,9 +12,12 @@ import { adoptSession, AuthSession, publicApi } from '../../src/lib/api';
 import { beginOtpFlow } from '../../src/lib/authFlow';
 import { errorMessage } from '../../src/lib/errors';
 import { useLock } from '../../src/lib/lock';
+import { useTheme } from '../../src/theme/useTheme';
 
 export default function Register() {
   const { t } = useTranslation();
+  const th = useTheme();
+  const qc = useQueryClient();
   const router = useRouter();
   const { unlock } = useLock();
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +49,7 @@ export default function Register() {
       if (res.session) {
         await adoptSession(res.session);
         unlock();
+        void qc.invalidateQueries({ queryKey: ['profile'] });
         router.replace('/onboarding');
         return;
       }
@@ -54,12 +60,23 @@ export default function Register() {
 
   const toggle = (
     <Press onPress={() => setShow((s) => !s)} label={show ? t('auth.login.hide') : t('auth.login.show')}>
-      <Text size="sm" weight="600" color="#12A594">{show ? t('auth.login.hide') : t('auth.login.show')}</Text>
+      <Text size="sm" weight="600" color={th.primary}>{show ? t('auth.login.hide') : t('auth.login.show')}</Text>
     </Press>
   );
 
   return (
     <Screen bottomPad={30}>
+      <View className="flex-row items-center justify-between">
+        <Text size="xs" weight="700" color={th.gold} style={{ letterSpacing: 1.6 }}>{t('common.appName')}</Text>
+        <Press
+          onPress={() => router.push({ pathname: '/language', params: { from: 'auth' } })}
+          label={t('language.settingsTitle')}
+          className="flex-row items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5"
+        >
+          <Ionicons name="language-outline" size={14} color={th.primary} />
+          <Text size="xs" weight="600" color={th.primary}>{t('language.settingsTitle')}</Text>
+        </Press>
+      </View>
       <Header title={t('auth.register.title')} subtitle={t('auth.register.subtitle')} />
       <View className="flex-row gap-3">
         <View className="flex-1"><Controller control={control} name="first_name" render={({ field, fieldState }) => (
@@ -78,7 +95,7 @@ export default function Register() {
       <ErrorText message={error} />
       <Button title={t('auth.register.submit')} onPress={onSubmit} loading={formState.isSubmitting} />
       <Text size="xs" muted style={{ textAlign: 'center' }}>{t('auth.register.terms')}</Text>
-      <Press onPress={() => router.replace('/login')} className="items-center py-1"><Text muted>{t('auth.haveAccount')} <Text weight="600">{t('auth.signIn')}</Text></Text></Press>
+      <Press onPress={() => router.replace('/login')} className="items-center py-1"><Text muted>{t('auth.haveAccount')} <Text weight="600" color={th.primary}>{t('auth.signIn')}</Text></Text></Press>
     </Screen>
   );
 }

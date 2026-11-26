@@ -22,15 +22,15 @@ let chosen: Lang | null | undefined;
 const listeners = new Set<() => void>();
 const emit = (v: Lang | null) => { chosen = v; listeners.forEach((f) => f()); };
 
-/** Older builds saved the device default without asking. Only a confirmed choice skips the picker. */
+/** Only an explicit language confirmation skips the initial language picker. */
 export async function loadLanguage(): Promise<Lang | null> {
   let v: Lang = deviceLang();
   let saved: Lang | null = null;
   try {
-    const [[, raw], [, confirmed], [, introSeen]] = await AsyncStorage.multiGet([KEY, CHOSEN_KEY, 'mylifeos:intro:seen']);
+    const [[, raw], [, confirmed]] = await AsyncStorage.multiGet([KEY, CHOSEN_KEY]);
     if (raw === 'en' || raw === 'fr') {
       v = raw;
-      if (confirmed === '1' || introSeen === '1') saved = raw;
+      if (confirmed === '1') saved = raw;
     }
     await i18n.changeLanguage(v);
   } catch { /* storage unavailable: fall back to the device language */ }

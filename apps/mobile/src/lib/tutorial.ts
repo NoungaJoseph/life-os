@@ -11,6 +11,7 @@ const tourKey = (userId: string) => `${prefix(userId)}:tour`;
 const tipKey = (userId: string, screen: TipScreen) => `${prefix(userId)}:tip:${screen}`;
 const introKey = 'mylifeos:intro:seen';
 let introSeen: boolean | undefined;
+let introViewedThisSession = false;
 const introListeners = new Set<() => void>();
 const emitIntro = (seen: boolean) => { introSeen = seen; introListeners.forEach((listener) => listener()); };
 export async function loadIntro() {
@@ -18,8 +19,13 @@ export async function loadIntro() {
   catch { emitIntro(false); }
 }
 export async function finishIntro() {
+  introViewedThisSession = true;
   try { await AsyncStorage.setItem(introKey, '1'); } catch { /* allow the flow to continue */ }
   emitIntro(true);
+}
+export const wasIntroViewedThisSession = () => introViewedThisSession;
+export async function markLocalTourSeen(userId: string) {
+  try { await AsyncStorage.setItem(tourKey(userId), '1'); } catch { /* ignore */ }
 }
 export const useIntroSeen = () => useSyncExternalStore((listener) => {
   introListeners.add(listener);

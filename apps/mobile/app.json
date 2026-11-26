@@ -3,14 +3,38 @@
     "name": "MY LIFE OS",
     "slug": "my-life-os",
     "scheme": "mylifeos",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "plugins": ["expo-router", ["expo-notifications", { "color": "#C9A24B" }]],
-    "ios": { "supportsTablet": true, "bundleIdentifier": "com.mylifeos.app" },
+    "plugins": [
+      "expo-router",
+      ["expo-notifications", { "color": "#C9A24B" }],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ECEAE3",
+          "dark": {
+            "image": "./assets/splash-icon.png",
+            "backgroundColor": "#0F120F"
+          }
+        }
+      ]
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.noungajoseph.mylifeos",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
     "android": {
-      "package": "com.mylifeos.app",
+      "package": "com.noungajoseph.mylifeos",
+      "versionCode": 1,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#14213D",
@@ -20,6 +44,8 @@
       },
       "predictiveBackGestureEnabled": false
     },
-    "web": { "favicon": "./assets/favicon.png" }
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
   }
 }

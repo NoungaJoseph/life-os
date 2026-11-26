@@ -4,9 +4,13 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { TimeField } from '../../src/components/TimeField';
-import { Button, Card, Chip, ErrorText, Field, Loading, Screen, Text } from '../../src/components/ui';
+import { Button, Card, Chip, ErrorText, Field, Loading, Pill, ProgressBar, Row, Screen, Text, success } from '../../src/components/ui';
+import { setLanguage as setAppLanguage } from '../../src/i18n';
+import { areaText, pillarName } from '../../src/i18n/helpers';
 import { api } from '../../src/lib/api';
+import { wasIntroViewedThisSession } from '../../src/lib/tutorial';
 import { LifeArea, LifeVision, Pillar, Preferences, Profile, UserLifeArea } from '../../src/lib/types';
+import { useTheme } from '../../src/theme/useTheme';
 
 const STEP_COUNT = 8;
 const CURRENCIES = ['XAF', 'USD', 'EUR', 'NGN', 'GBP'];
@@ -19,6 +23,7 @@ interface NewGoal { title: string; goal_type: string }
 
 export default function Onboarding() {
   const { t } = useTranslation();
+  const th = useTheme();
   const router = useRouter();
   const qc = useQueryClient();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
@@ -83,12 +88,13 @@ export default function Onboarding() {
 
   const planning = prefs.planning ?? { daily: true, weekly: true, monthly: true };
   const routine = prefs.routine ?? {};
+  const titles = t('onboarding.titles', { returnObjects: true }) as string[];
 
   function validate(): string | null {
-    if (step === 0 && !name.trim()) return 'Please enter a name.';
+    if (step === 0 && !name.trim()) return t('onboarding.errors.name');
     if (step === 7) {
-      for (const t of [routine.work_start, routine.work_end, routine.reading_time, routine.exercise_time]) {
-        if (t && !TIME_RE.test(t)) return 'Use 24-hour times like 08:30.';
+      for (const tm of [routine.work_start, routine.work_end, routine.reading_time, routine.exercise_time]) {
+        if (tm && !TIME_RE.test(tm)) return t('onboarding.errors.time');
       }
     }
     return null;
@@ -119,14 +125,34 @@ export default function Onboarding() {
         await api('/profile', { method: 'PATCH', body: { preferences: prefs } });
         break;
       case 6: {
-        if (isEdit) break; // goals are managed in the planner after setup
+        if (isEdit) break;
         for (const g of goals.filter((x) => x.title.trim())) {
           await api('/goals', { method: 'POST', body: { title: g.title.trim(), goal_type: g.goal_type, status: 'active' } });
         }
-        setGoals([{ title: '', goal_type: 'long_term' }]); // avoid duplicates if the user comes back
+        setGoals([{ title: '', goal_type: 'long_term' }]);
         break;
       }
     }
+  }
+
+  async function completeOnboarding() {
+    const patchBody: Record<string, unknown> = { onboarding_completed: true };
+    if (wasIntroViewedThisSession()) {
+      patchBody.preferences = { ...prefs, tutorial: { ...prefs.tutorial, tour_seen: true } };
+    }
+    const updated = await api<Profile>('/profile', { method: 'PATCH', body: patchBody }).catch(() => null);
+    if (updated) qc.setQueryData(['profile'], updated);
+    await Promise.all([qc.invalidateQueries({ queryKey: ['profile'] }), qc.invalidateQueries({ queryKey: ['goals'] })]);
+    success();
+    if (isEdit) {
+      router.replace('/');
+      return;
+    }
+    if (!wasIntroViewedThisSession() && !updated?.preferences?.tutorial?.tour_seen) {
+      router.replace('/tutorial');
+      return;
+    }
+    router.replace('/create-pin');
   }
 
   async function next() {
@@ -137,9 +163,7 @@ export default function Onboarding() {
     try {
       await save();
       if (step === STEP_COUNT - 1) {
-        await api('/profile', { method: 'PATCH', body: { onboarding_completed: true } });
-        await Promise.all([qc.invalidateQueries({ queryKey: ['profile'] }), qc.invalidateQueries({ queryKey: ['goals'] })]);
-        router.replace(isEdit ? '/' : '/create-pin');
+        await completeOnboarding();
       } else {
         setStep(step + 1);
       }
@@ -153,90 +177,142 @@ export default function Onboarding() {
   const last = step === STEP_COUNT - 1;
 
   return (
-    <Screen>
-      <Text size="sm" muted>{t('onboarding.step', { n: step + 1, total: STEP_COUNT })}</Text>
-      <Text size="xl" weight="700">{(t('onboarding.titles', { returnObjects: true }) as string[])[step]}</Text>
+    <Screen bottomPad={40}>
+      <View className="gap-3 border-b border-line pb-4">
+        <View className="flex-row items-center justify-between">
+          <Text size="xs" weight="700" color={th.gold} style={{ letterSpacing: 1.6 }}>
+            {t('onboarding.step', { n: step + 1, total: STEP_COUNT }).toUpperCase()}
+          </Text>
+          <Pill label={t('common.appName')} tone="accent" />
+        </View>
+        <Text size="xl" serif weight="700">{titles[step]}</Text>
+        <ProgressBar value={(step + 1) / STEP_COUNT} tone="accent" height={5} />
+      </View>
 
       {step === 0 && (
-        <>
+        <Card className="gap-3">
           <Field label={t('onboarding.name')} value={name} onChangeText={setName} />
           <Field label={t('onboarding.timezone')} value={timezone} onChangeText={setTimezone} autoCapitalize="none" />
           <Text size="sm" weight="600">{t('onboarding.currency')}</Text>
           <Row>{CURRENCIES.map((c) => <Chip key={c} label={c} selected={currency === c} onPress={() => setCurrency(c)} />)}</Row>
           <Text size="sm" weight="600">{t('onboarding.language')}</Text>
-          <Row>{LANGUAGES.map((c) => <Chip key={c} label={t(`language.${c === 'en' ? 'english' : 'french'}`)} selected={language === c} onPress={() => setLanguage(c)} />)}</Row>
-        </>
+          <Row>
+            {LANGUAGES.map((c) => (
+              <Chip
+                key={c}
+                label={t(`language.${c === 'en' ? 'english' : 'french'}`)}
+                selected={language === c}
+                onPress={() => {
+                  setLanguage(c);
+                  void setAppLanguage(c);
+                }}
+              />
+            ))}
+          </Row>
+        </Card>
       )}
 
       {step === 1 && (
-        <>
+        <Card className="gap-3">
           <Field label={t('onboarding.identity')} multiline value={identity} onChangeText={setIdentity} />
           <Field label={t('onboarding.idealLife')} multiline value={idealLife} onChangeText={setIdealLife} />
           <Field label={t('onboarding.ambitions')} multiline value={ambitions} onChangeText={setAmbitions} />
-        </>
+        </Card>
       )}
 
       {step === 2 && (
-        <>
-          <Text muted>{t('onboarding.pillarsIntro')}</Text>
+        <View className="gap-3">
+          <Text size="sm" muted>{t('onboarding.pillarsIntro')}</Text>
           {pillarsQ.data!.map((p) => (
-            <Card key={p.id}>
-              <Text weight="600">{p.name}</Text>
-              {p.purpose ? <Text size="sm" muted>{p.purpose}</Text> : null}
-              <Field label={t('onboarding.priorities')} multiline value={priorities[p.slug] ?? ''}
-                onChangeText={(v) => setPriorities((s) => ({ ...s, [p.slug]: v }))} />
+            <Card key={p.id} className="gap-2">
+              <Text weight="700">{pillarName(t, p.name)}</Text>
+              {p.purpose ? <Text size="xs" muted>{p.purpose}</Text> : null}
+              <Field
+                label={t('onboarding.priorities')}
+                multiline
+                value={priorities[p.slug] ?? ''}
+                onChangeText={(v) => setPriorities((s) => ({ ...s, [p.slug]: v }))}
+              />
             </Card>
           ))}
-        </>
+        </View>
       )}
 
       {step === 3 && (
-        <>
-          <Text muted>{t('onboarding.areasIntro')}</Text>
+        <Card className="gap-3">
+          <Text size="sm" muted>{t('onboarding.areasIntro')}</Text>
           <Row>
             {areasQ.data!.map((a) => (
-              <Chip key={a.id} label={a.name} selected={!!active[a.id]} onPress={() => setActive((s) => ({ ...s, [a.id]: !s[a.id] }))} />
+              <Chip
+                key={a.id}
+                label={areaText(t, a).name}
+                selected={!!active[a.id]}
+                onPress={() => setActive((s) => ({ ...s, [a.id]: !s[a.id] }))}
+              />
             ))}
           </Row>
-        </>
+        </Card>
       )}
 
       {step === 4 && (
-        <>
-          <Field label={t('onboarding.obstacles')} multiline value={prefs.challenges?.obstacles ?? ''}
-            onChangeText={(v) => setPref('challenges', { obstacles: v })} />
-          <Field label={t('onboarding.distractions')} multiline value={prefs.challenges?.distractions ?? ''}
-            onChangeText={(v) => setPref('challenges', { distractions: v })} />
-          <Field label={t('onboarding.improve')} multiline value={prefs.challenges?.improve ?? ''}
-            onChangeText={(v) => setPref('challenges', { improve: v })} />
-        </>
+        <Card className="gap-3">
+          <Field
+            label={t('onboarding.obstacles')}
+            multiline
+            value={prefs.challenges?.obstacles ?? ''}
+            onChangeText={(v) => setPref('challenges', { obstacles: v })}
+          />
+          <Field
+            label={t('onboarding.distractions')}
+            multiline
+            value={prefs.challenges?.distractions ?? ''}
+            onChangeText={(v) => setPref('challenges', { distractions: v })}
+          />
+          <Field
+            label={t('onboarding.improve')}
+            multiline
+            value={prefs.challenges?.improve ?? ''}
+            onChangeText={(v) => setPref('challenges', { improve: v })}
+          />
+        </Card>
       )}
 
       {step === 5 && (
-        <>
-          <Text muted>{t('onboarding.planningIntro')}</Text>
+        <Card className="gap-3">
+          <Text size="sm" muted>{t('onboarding.planningIntro')}</Text>
           <Row>
             {(['daily', 'weekly', 'monthly'] as const).map((k) => (
-              <Chip key={k} label={`${k[0].toUpperCase()}${k.slice(1)} planning`} selected={planning[k]}
-                onPress={() => setPref('planning', { ...planning, [k]: !planning[k] })} />
+              <Chip
+                key={k}
+                label={t(`onboarding.planning.${k}`)}
+                selected={planning[k]}
+                onPress={() => setPref('planning', { ...planning, [k]: !planning[k] })}
+              />
             ))}
           </Row>
-        </>
+        </Card>
       )}
 
       {step === 6 && (isEdit ? (
-        <Text muted>{t('onboarding.goalsEditIntro')}</Text>
+        <Card><Text size="sm" muted>{t('onboarding.goalsEditIntro')}</Text></Card>
       ) : (
-        <>
-          <Text muted>{t('onboarding.goalsIntro')}</Text>
+        <View className="gap-3">
+          <Text size="sm" muted>{t('onboarding.goalsIntro')}</Text>
           {goals.map((g, i) => (
-            <Card key={i}>
-              <Field label={t('onboarding.goalN', { n: i + 1 })} value={g.title}
-                onChangeText={(v) => setGoals((arr) => arr.map((x, j) => (j === i ? { ...x, title: v } : x)))} />
+            <Card key={i} className="gap-3">
+              <Field
+                label={t('onboarding.goalN', { n: i + 1 })}
+                value={g.title}
+                onChangeText={(v) => setGoals((arr) => arr.map((x, j) => (j === i ? { ...x, title: v } : x)))}
+              />
               <Row>
                 {GOAL_TYPES.map((type) => (
-                  <Chip key={type} label={t(`onboarding.goalTypes.${type}`)} selected={g.goal_type === type}
-                    onPress={() => setGoals((arr) => arr.map((x, j) => (j === i ? { ...x, goal_type: type } : x)))} />
+                  <Chip
+                    key={type}
+                    label={t(`onboarding.goalTypes.${type}`)}
+                    selected={g.goal_type === type}
+                    onPress={() => setGoals((arr) => arr.map((x, j) => (j === i ? { ...x, goal_type: type } : x)))}
+                  />
                 ))}
               </Row>
             </Card>
@@ -244,11 +320,11 @@ export default function Onboarding() {
           {goals.length < 3 && (
             <Button title={t('onboarding.addGoal')} variant="ghost" onPress={() => setGoals((a) => [...a, { title: '', goal_type: 'annual' }])} />
           )}
-        </>
+        </View>
       ))}
 
       {step === 7 && (
-        <>
+        <Card className="gap-3">
           <TimeField label={t('onboarding.workStart')} value={routine.work_start ?? ''} onChange={(v) => setPref('routine', { work_start: v })} />
           <TimeField label={t('onboarding.workEnd')} value={routine.work_end ?? ''} onChange={(v) => setPref('routine', { work_end: v })} />
           <TimeField label={t('onboarding.readingTime')} value={routine.reading_time ?? ''} onChange={(v) => setPref('routine', { reading_time: v })} />
@@ -257,23 +333,23 @@ export default function Onboarding() {
             {DAYS.map(([d, key]) => {
               const days = routine.exercise_days ?? [];
               return (
-                <Chip key={d} label={t(`onboarding.days.${key}`)} selected={days.includes(d)}
-                  onPress={() => setPref('routine', { exercise_days: days.includes(d) ? days.filter((x) => x !== d) : [...days, d] })} />
+                <Chip
+                  key={d}
+                  label={t(`onboarding.days.${key}`)}
+                  selected={days.includes(d)}
+                  onPress={() => setPref('routine', { exercise_days: days.includes(d) ? days.filter((x) => x !== d) : [...days, d] })}
+                />
               );
             })}
           </Row>
           <TimeField label={t('onboarding.exerciseTime')} value={routine.exercise_time ?? ''} onChange={(v) => setPref('routine', { exercise_time: v })} />
-        </>
+        </Card>
       )}
 
       <ErrorText message={error} />
-      <Button title={last ? t('onboarding.finish') : t('common.continue')} onPress={next} loading={saving} />
+      <Button title={last ? t('onboarding.finish') : t('common.continue')} onPress={() => void next()} loading={saving} />
       {step > 0 && <Button title={t('common.back')} variant="ghost" onPress={() => { setError(null); setStep(step - 1); }} disabled={saving} />}
-      <Button title={isEdit ? t('common.close') : t('tutorial.skip')} variant="ghost" onPress={() => { void api('/profile', { method: 'PATCH', body: { onboarding_completed: true } }).catch(() => undefined); router.replace(isEdit ? '/' : '/create-pin'); }} disabled={saving} />
+      <Button title={isEdit ? t('common.close') : t('tutorial.skip')} variant="ghost" onPress={() => void completeOnboarding()} disabled={saving} />
     </Screen>
   );
-}
-
-function Row({ children }: { children: React.ReactNode }) {
-  return <View className="flex-row flex-wrap gap-[8px]">{children}</View>;
 }
