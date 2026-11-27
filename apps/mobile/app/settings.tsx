@@ -9,6 +9,8 @@ import { FirstVisitTip } from '../src/components/Tutorial';
 import { api } from '../src/lib/api';
 import { errorMessage } from '../src/lib/errors';
 import { setEveningCheckinPrefs, syncEveningCheckinNotification, useEveningCheckinState } from '../src/lib/eveningCheckin';
+import { makeEventReminderCopy, syncCalendarEventNotifications } from '../src/lib/eventNotifications';
+import { sendTestNotification } from '../src/lib/notificationsSetup';
 import { enablePush } from '../src/lib/push';
 import {
   requestLocalNotificationPermission,
@@ -19,7 +21,7 @@ import {
 import { signOutDevice } from '../src/lib/signOut';
 import { useSession } from '../src/lib/session';
 import { resetTutorial } from '../src/lib/tutorial';
-import { Profile } from '../src/lib/types';
+import { CalendarEvent, Profile } from '../src/lib/types';
 import { spacing } from '../src/theme/tokens';
 import { useTheme } from '../src/theme/useTheme';
 
@@ -58,9 +60,13 @@ export default function Settings() {
       const perm = await requestLocalNotificationPermission();
       if (perm === 'web') return 'web';
       if (perm !== 'granted') return 'blocked';
+      const events =
+        qc.getQueryData<CalendarEvent[]>(['calendar-events', 'upcoming']) ??
+        (await api<CalendarEvent[]>('/calendar-events?pageSize=100').catch(() => []));
       await Promise.all([
         syncEveningCheckinNotification(tr('eveningCheckin.notifTitle'), tr('eveningCheckin.notifBody'), true),
         syncRoutineNotifications(routineCopy(), true),
+        syncCalendarEventNotifications(events, makeEventReminderCopy(tr), true),
       ]);
       return 'done';
     },
@@ -68,6 +74,25 @@ export default function Settings() {
       if (status === 'done') {
         success();
         setLocalMsg(tr('settingsPage.localNotifDone'));
+      } else if (status === 'web') {
+        setLocalMsg(tr('ui.push.web'));
+      } else {
+        setLocalMsg(tr('ui.push.blocked'));
+      }
+    },
+    onError: (e) => setLocalMsg(errorMessage(e, tr)),
+  });
+  const testNotif = useMutation({
+    mutationFn: () =>
+      sendTestNotification(
+        tr('common.appName'),
+        tr('eveningCheckin.notifBody'),
+        tr('ui.push.channel'),
+      ),
+    onSuccess: (status) => {
+      if (status === 'scheduled') {
+        success();
+        setLocalMsg(tr('settingsPage.testNotifScheduled'));
       } else if (status === 'web') {
         setLocalMsg(tr('ui.push.web'));
       } else {
@@ -161,6 +186,7 @@ export default function Settings() {
             />
           )}
           <Button title={tr('settingsPage.enableLocalNotif')} variant="ghost" icon="notifications-outline" loading={enableLocal.isPending} onPress={() => enableLocal.mutate()} />
+          <Button title={tr('settingsPage.testNotifBtn')} variant="ghost" icon="flash-outline" loading={testNotif.isPending} onPress={() => testNotif.mutate()} />
           {localMsg ? <Text size="sm" muted>{localMsg}</Text> : null}
           <Button title={tr('settingsPage.enablePush')} variant="ghost" loading={push.isPending} onPress={() => push.mutate()} />
           {pushMsg ? <Text size="sm" muted>{pushMsg}</Text> : <Text size="xs" muted>{tr('settingsPage.pushNeedsBuild')}</Text>}

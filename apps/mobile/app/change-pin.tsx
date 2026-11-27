@@ -6,7 +6,7 @@ import { PinPad } from '../src/components/PinPad';
 import { ErrorText, Header, Screen, Text, success } from '../src/components/ui';
 import { api } from '../src/lib/api';
 import { useLock } from '../src/lib/lock';
-import { isWeakPin, setLocalPin, verifyLocalPin } from '../src/lib/pin';
+import { isWeakPin, setLocalPin, verifyAccountPin } from '../src/lib/pin';
 import { useSession } from '../src/lib/session';
 import { signOutDevice } from '../src/lib/signOut';
 
@@ -31,9 +31,13 @@ export default function ChangePin() {
     if (step === 'current') {
       setBusy(true);
       try {
-        const r = await verifyLocalPin(session.user.id, pin);
+        const r = await verifyAccountPin(session.user.id, pin);
         if (!r.ok) {
           bump();
+          if (r.networkError) {
+            setError(t('common.errors.network'));
+            return;
+          }
           if (r.missing) {
             requirePinSetup();
             router.replace('/create-pin');

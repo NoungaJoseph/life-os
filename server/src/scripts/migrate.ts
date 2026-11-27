@@ -13,7 +13,7 @@ export const LEGACY_MIGRATION_SENTINELS: Record<string, string> = {
   '20261116000002': 'savings_groups',
   '20261117000001': 'transformation_areas',
   '20261117000002': 'screen_time_rules',
-  '20261118000001': 'savings_accounts',
+  '20261118000001': 'personal_savings_goals',
   '20261118000002': 'family_savings_groups',
 };
 

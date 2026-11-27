@@ -10,20 +10,23 @@ import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import '../global.css';
 import React, { useEffect, useState } from 'react';
-import { useColorScheme, View } from 'react-native';
+import { StyleSheet, useColorScheme, View } from 'react-native';
 import { themeVars } from '../src/theme/vars';
 import { EveningCheckinPrompt } from '../src/components/EveningCheckinPrompt';
 import { RoutinePrompts } from '../src/components/RoutinePrompts';
 import { Loading, Text } from '../src/components/ui';
 import { useTranslation } from 'react-i18next';
-import { loadLanguage, useChosenLanguage } from '../src/i18n';
+import { loadLanguage, setLanguage, useChosenLanguage } from '../src/i18n';
 import { api, setRevokedHandler } from '../src/lib/api';
 import { resolveGateRoute } from '../src/lib/gateLogic';
 import { LockProvider, useLock } from '../src/lib/lock';
+import { configureNotifications } from '../src/lib/notificationsSetup';
 import { signOutDevice } from '../src/lib/signOut';
 import { SessionProvider, useSession } from '../src/lib/session';
 import { loadIntro, useIntroSeen } from '../src/lib/tutorial';
 import { Profile } from '../src/lib/types';
+
+configureNotifications();
 
 const CACHE_KEY = 'mylifeos-query-cache';
 const persister = createAsyncStoragePersister({ storage: AsyncStorage, key: CACHE_KEY, throttleTime: 2000 });
@@ -38,7 +41,7 @@ function useOnline() {
   return online;
 }
 
-function Gate() {
+function Gate({ fontsReady }: { fontsReady: boolean }) {
   const { session, loading } = useSession();
   const qc = useQueryClient();
   const online = useOnline();
@@ -65,6 +68,11 @@ function Gate() {
   });
   useEffect(() => { void loadLanguage(); }, []);
   useEffect(() => { void loadIntro(); }, []);
+  useEffect(() => {
+    if (chosen === null && profileQ.data?.language) {
+      void setLanguage(profileQ.data.language === 'fr' ? 'fr' : 'en');
+    }
+  }, [chosen, profileQ.data?.language]);
   // A device that was signed out from another phone is dropped back to the welcome screen.
   useEffect(() => { setRevokedHandler(() => { void signOutDevice(); }); return () => setRevokedHandler(null); }, []);
 
@@ -82,18 +90,19 @@ function Gate() {
   });
 
   useEffect(() => {
-    if (decision.redirect) {
+    if (fontsReady && !decision.waiting && decision.redirect) {
       router.replace(decision.redirect as any);
     }
-  }, [decision.redirect, router]);
+  }, [fontsReady, decision.waiting, decision.redirect, router]);
 
-  if (decision.waiting) return <Loading />;
-  const promptActive = !visualTutorial && !!session && !(lock.hasPin && lock.locked) && !['evening-checkin', 'morning-plan', 'onboarding', 'create-pin', 'tutorial', 'language', '(auth)', 'unlock'].includes(group ?? '');
+  const showOverlay = !fontsReady || decision.waiting || Boolean(decision.redirect);
+  const promptActive = fontsReady && !decision.waiting && !decision.redirect && !visualTutorial && !!session && !(lock.hasPin && lock.locked) && !['evening-checkin', 'morning-plan', 'onboarding', 'create-pin', 'tutorial', 'language', '(auth)', 'unlock'].includes(group ?? '');
   return (
     <View className="flex-1 bg-bg" style={themeVars(scheme)}>
     {!online && <View className="bg-[#14213D] pb-1.5 pt-8"><Text size="xs" color="#E9D9A6" style={{ textAlign: 'center' }}>{t('common.offline')}</Text></View>}
     <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
       <Stack.Screen name="new-task" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="new-event" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="new-habit" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="new-goal" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="morning-plan" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
@@ -101,6 +110,11 @@ function Gate() {
     </Stack>
     <EveningCheckinPrompt active={promptActive} />
     <RoutinePrompts active={promptActive} />
+    {showOverlay ? (
+      <View style={[StyleSheet.absoluteFill, { zIndex: 50 }]} pointerEvents="auto">
+        <Loading />
+      </View>
+    ) : null}
     </View>
   );
 }
@@ -108,13 +122,13 @@ function Gate() {
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, PlayfairDisplay_600SemiBold, PlayfairDisplay_700Bold });
   const [client] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000, gcTime: 1000 * 60 * 60 * 24 * 7 } } }));
-  if (!fontsLoaded && !fontError) return <Loading />;
+  const fontsReady = fontsLoaded || !!fontError;
   return (
     <PersistQueryClientProvider client={client} persistOptions={{ persister, maxAge: 1000 * 60 * 60 * 24 * 7 }}>
       <SessionProvider>
         <LockProvider>
           <StatusBar style="auto" />
-          <Gate />
+          <Gate fontsReady={fontsReady} />
         </LockProvider>
       </SessionProvider>
     </PersistQueryClientProvider>

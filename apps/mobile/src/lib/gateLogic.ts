@@ -34,7 +34,7 @@ export function resolveGateRoute(s: GateInput): GateDecision {
     return { waiting: true, redirect: null };
   }
 
-  if (s.chosenLanguage === null) {
+  if (!s.hasSession && !s.introSeen && s.chosenLanguage === null) {
     return { waiting: false, redirect: s.group === 'language' ? null : '/language' };
   }
 

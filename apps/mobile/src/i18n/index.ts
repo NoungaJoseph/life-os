@@ -22,15 +22,22 @@ let chosen: Lang | null | undefined;
 const listeners = new Set<() => void>();
 const emit = (v: Lang | null) => { chosen = v; listeners.forEach((f) => f()); };
 
-/** Only an explicit language confirmation skips the initial language picker. */
+/** Only an explicit language confirmation (or completed intro) skips the initial language picker. */
 export async function loadLanguage(): Promise<Lang | null> {
   let v: Lang = deviceLang();
   let saved: Lang | null = null;
+  let confirmed: string | null = null;
   try {
-    const [[, raw], [, confirmed]] = await AsyncStorage.multiGet([KEY, CHOSEN_KEY]);
+    const [[, raw], [, conf], [, introSeen]] = await AsyncStorage.multiGet([KEY, CHOSEN_KEY, 'mylifeos:intro:seen']);
+    confirmed = conf;
     if (raw === 'en' || raw === 'fr') {
       v = raw;
-      if (confirmed === '1') saved = raw;
+      saved = raw;
+    } else if (confirmed === '1' || introSeen === '1') {
+      saved = v;
+    }
+    if (saved !== null && confirmed !== '1') {
+      void AsyncStorage.multiSet([[KEY, saved], [CHOSEN_KEY, '1']]).catch(() => undefined);
     }
     await i18n.changeLanguage(v);
   } catch { /* storage unavailable: fall back to the device language */ }
@@ -39,7 +46,9 @@ export async function loadLanguage(): Promise<Lang | null> {
 }
 export async function setLanguage(l: Lang) {
   await i18n.changeLanguage(l);
-  try { await AsyncStorage.multiSet([[KEY, l], [CHOSEN_KEY, '1']]); } catch { /* ignore */ }
+  try {
+    await Promise.all([AsyncStorage.setItem(KEY, l), AsyncStorage.setItem(CHOSEN_KEY, '1')]);
+  } catch { /* ignore */ }
   emit(l);
 }
 export const useChosenLanguage = () => useSyncExternalStore((cb) => { listeners.add(cb); return () => { listeners.delete(cb); }; }, () => chosen, () => chosen);

@@ -1,13 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { addNotificationResponseReceivedListener } from 'expo-notifications';
+import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppState, Modal, Platform, Pressable, View } from 'react-native';
 import { api } from '../lib/api';
+import { addDays } from '../lib/dates';
 import { errorMessage } from '../lib/errors';
-import { isEveningPromptDue, useEveningCheckinState } from '../lib/eveningCheckin';
+import { isEveningPromptDue, syncEveningCheckinNotification, useEveningCheckinState } from '../lib/eveningCheckin';
 import { localDateKey } from '../lib/eveningCheckinLogic';
+import { makeEventReminderCopy, syncCalendarEventNotifications } from '../lib/eventNotifications';
+import { ensureLocalNotificationPermission } from '../lib/notificationsSetup';
+import { enablePush } from '../lib/push';
 import {
   activeMealSlot,
   shouldPromptMealFollowUp,
@@ -22,6 +26,7 @@ import {
   syncRoutineNotifications,
   useRoutineState,
 } from '../lib/routineNotifications';
+import { CalendarEvent } from '../lib/types';
 import { useTheme } from '../theme/useTheme';
 import { Button, Chip, ErrorText, Field, IconBadge, Row, Text, success } from './ui';
 
@@ -44,9 +49,8 @@ export function RoutinePrompts({ active }: { active: boolean }) {
     void loadRoutineState();
   }, []);
 
-  useEffect(() => {
-    if (!active || !routine.loaded) return;
-    void syncRoutineNotifications({
+  const syncAllRoutines = () =>
+    syncRoutineNotifications({
       channelName: t('ui.push.channel'),
       morningTitle: t('routine.notif.morningTitle'),
       morningBody: t('routine.notif.morningBody'),
@@ -59,6 +63,27 @@ export function RoutinePrompts({ active }: { active: boolean }) {
       monthlyTitle: t('routine.notif.monthlyTitle'),
       monthlyBody: t('routine.notif.monthlyBody'),
     });
+
+  useEffect(() => {
+    if (!active || !routine.loaded) return;
+    let cancelled = false;
+    void (async () => {
+      const perm = await ensureLocalNotificationPermission({ requestIfNeeded: true, onceOnly: true });
+      if (cancelled || perm !== 'granted') return;
+      await Promise.all([
+        syncAllRoutines(),
+        syncEveningCheckinNotification(t('eveningCheckin.notifTitle'), t('eveningCheckin.notifBody')),
+        enablePush().catch(() => undefined),
+      ]);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, routine.loaded]);
+
+  useEffect(() => {
+    if (!active || !routine.loaded) return;
+    void syncAllRoutines();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     active,
     routine.loaded,
@@ -86,19 +111,41 @@ export function RoutinePrompts({ active }: { active: boolean }) {
 
   useEffect(() => {
     if (Platform.OS === 'web') return;
-    const sub = addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data as { route?: string; meal?: string; tab?: string } | undefined;
-      if (data?.route === '/morning-plan') {
+    const handleTap = (data: { route?: string; meal?: string; tab?: string; date?: string } | undefined) => {
+      if (!data?.route) return;
+      if (data.route === '/morning-plan') {
         router.push(data.meal ? { pathname: '/morning-plan', params: { meal: data.meal } } : '/morning-plan');
-      } else if (data?.route === '/review') {
+      } else if (data.route === '/review') {
         router.push(data.tab ? { pathname: '/review', params: { tab: data.tab } } : '/review');
+      } else if (data.route === '/(tabs)/planner') {
+        router.push(data.date ? { pathname: '/(tabs)/planner', params: { date: data.date } } : '/(tabs)/planner');
       }
+    };
+    void Notifications.getLastNotificationResponseAsync().then((response) => {
+      const data = response?.notification.request.content.data as any;
+      if (data?.route === '/morning-plan' || data?.route === '/review' || data?.route === '/(tabs)/planner') {
+        void Notifications.clearLastNotificationResponseAsync();
+        handleTap(data);
+      }
+    });
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      handleTap(response.notification.request.content.data as any);
     });
     return () => sub.remove();
   }, [router]);
 
   const now = new Date(tick);
   const today = localDateKey(now);
+  const eventsQ = useQuery({
+    queryKey: ['calendar-events', 'upcoming'],
+    queryFn: () => api<CalendarEvent[]>(`/calendar-events?from=${addDays(today, -1)}&pageSize=100`),
+    enabled: active,
+  });
+
+  useEffect(() => {
+    if (!active || !eventsQ.data) return;
+    void syncCalendarEventNotifications(eventsQ.data, makeEventReminderCopy(t));
+  }, [active, eventsQ.data, t]);
   const mealTimes = {
     breakfast: routine.breakfastTime,
     lunch: routine.lunchTime,

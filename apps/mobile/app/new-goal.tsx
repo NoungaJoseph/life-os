@@ -51,12 +51,25 @@ export default function NewGoal() {
   const area = watch('life_area_id');
 
   const create = useMutation({
-    mutationFn: (f: Form) => api<{ id: string }>('/goals', { method: 'POST', body: {
-      title: f.title, goal_type: f.goal_type, status: 'active', measurement_type: f.measurement_type,
-      ...(f.description ? { description: f.description } : {}), ...(f.target_date ? { target_date: f.target_date } : {}),
-      ...(f.target_value ? { target_value: parseMoneyInput(f.target_value) } : {}),
-      ...(f.parent_goal_id ? { parent_goal_id: f.parent_goal_id } : {}), ...(f.pillar_id ? { pillar_id: f.pillar_id } : {}), ...(f.life_area_id ? { life_area_id: f.life_area_id } : {}),
-    } }),
+    mutationFn: (f: Form) => {
+      const needsTarget = f.measurement_type === 'numeric' || f.measurement_type === 'currency';
+      const parsedTarget = needsTarget ? parseMoneyInput(f.target_value ?? '') : NaN;
+      return api<{ id: string }>('/goals', {
+        method: 'POST',
+        body: {
+          title: f.title,
+          goal_type: f.goal_type,
+          status: 'active',
+          measurement_type: f.measurement_type,
+          ...(f.description ? { description: f.description } : {}),
+          ...(f.target_date ? { target_date: f.target_date } : {}),
+          ...(needsTarget && parsedTarget > 0 ? { target_value: parsedTarget } : {}),
+          ...(f.parent_goal_id ? { parent_goal_id: f.parent_goal_id } : {}),
+          ...(f.pillar_id ? { pillar_id: f.pillar_id } : {}),
+          ...(f.life_area_id ? { life_area_id: f.life_area_id } : {}),
+        },
+      });
+    },
     onSuccess: (g) => {
       success();
       void refresh();

@@ -9,12 +9,17 @@ import { fonts, radius, shadowLift, spacing } from '../../src/theme/tokens';
 import { useTheme } from '../../src/theme/useTheme';
 
 
+// Ordered to match Expo Router's seeded route order (index first, then alphabetical:
+// index, areas, goals, money, planner, profile) so useNavigationBuilder does not
+// dispatch ROUTE_NAMES_CHANGED while the root Gate is redirecting on startup.
 const TAB_DEFS = [
   { name: 'index', title: 'tabs.today', icon: 'today' },
-  { name: 'planner', title: 'tabs.plan', icon: 'calendar' },
   { name: 'money', title: 'tabs.money', icon: 'wallet' },
+  { name: 'planner', title: 'tabs.plan', icon: 'calendar' },
   { name: 'profile', title: 'tabs.profile', icon: 'person' },
 ] as const;
+
+type TabDef = (typeof TAB_DEFS)[number];
 
 const ACTIONS: { label: string; hint: string; icon: keyof typeof Ionicons.glyphMap; href: string }[] = [
   { label: 'tabs.addTask', hint: 'tabs.addTaskHint', icon: 'checkbox-outline', href: '/new-task' },
@@ -33,6 +38,18 @@ export default function AppLayout() {
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
 
+  const renderTabScreen = (d: TabDef) => (
+    <Tabs.Screen key={d.name} name={d.name} options={{
+      title: tr(d.title),
+      tabBarIcon: ({ color, focused }) => (
+        <View className="items-center">
+          <Ionicons name={(focused ? d.icon : `${d.icon}-outline`) as keyof typeof Ionicons.glyphMap} color={color as string} size={23} />
+          <View className={`mt-[3px] h-[3px] w-4 rounded-sm ${focused ? 'bg-gold' : 'bg-transparent'}`} />
+        </View>
+      ),
+    }} />
+  );
+
   return (
     <View className="flex-1 bg-bg">
       <Tabs screenOptions={{
@@ -45,19 +62,10 @@ export default function AppLayout() {
           backgroundColor: t.surface, borderTopWidth: 1, borderTopColor: t.border, paddingTop: 7, paddingBottom: 7, ...shadowLift,
         },
       }}>
-        {TAB_DEFS.map((d) => (
-          <Tabs.Screen key={d.name} name={d.name} options={{
-            title: tr(d.title),
-            tabBarIcon: ({ color, focused }) => (
-              <View className="items-center">
-                <Ionicons name={(focused ? d.icon : `${d.icon}-outline`) as keyof typeof Ionicons.glyphMap} color={color as string} size={23} />
-                <View className={`mt-[3px] h-[3px] w-4 rounded-sm ${focused ? 'bg-gold' : 'bg-transparent'}`} />
-              </View>
-            ),
-          }} />
-        ))}
-        <Tabs.Screen name="goals" options={{ href: null }} />
+        {renderTabScreen(TAB_DEFS[0])}
         <Tabs.Screen name="areas" options={{ href: null }} />
+        <Tabs.Screen name="goals" options={{ href: null }} />
+        {TAB_DEFS.slice(1).map((d) => renderTabScreen(d))}
       </Tabs>
 
       <Pressable accessibilityRole="button" accessibilityLabel={tr('tabs.quickActions')} onPress={() => { tap(); setOpen(true); }}

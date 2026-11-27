@@ -9,7 +9,12 @@
     "userInterfaceStyle": "automatic",
     "plugins": [
       "expo-router",
-      ["expo-notifications", { "color": "#C9A24B" }],
+      [
+        "expo-notifications",
+        {
+          "color": "#C9A24B"
+        }
+      ],
       [
         "expo-splash-screen",
         {
@@ -46,6 +51,16 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "bb0002d6-d0b9-4f34-85c0-b604a681aea6"
+      }
     }
   }
 }

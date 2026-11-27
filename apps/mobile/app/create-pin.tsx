@@ -33,7 +33,7 @@ export default function CreatePin() {
     setBusy(true);
     try {
       await setLocalPin(session!.user.id, pin);
-      void api('/security/pin', { method: 'PUT', body: { pin } }).catch(() => undefined);
+      await api('/security/pin', { method: 'PUT', body: { pin } }).catch(() => undefined);
       success(); pinCreated(); router.replace('/');
     } catch { setError(t('common.errors.generic')); setFirst(null); setReset((n) => n + 1); }
     finally { setBusy(false); }

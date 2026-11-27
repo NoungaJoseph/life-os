@@ -55,9 +55,19 @@ export const tabsEn = {
   planner: {
     title: 'Planner', loadError: 'Could not load your planner.',
     deleteTitle: 'Delete task', deleteConfirm: 'Delete "{{title}}"?', deleteLabel: 'Delete {{title}}',
-    prevWeek: 'Previous week', nextWeek: 'Next week', jumpToday: 'Jump to today',
-    overdue: 'Overdue', today: 'Today', tasks: 'Tasks', addTask: 'Add task',
+    prevWeek: 'Previous week', nextWeek: 'Next week', jumpToday: 'Jump to today', pickDate: 'Pick date',
+    overdue: 'Overdue', today: 'Today', tasks: 'Tasks', addTask: 'Add task', addEvent: 'Add event',
     emptyTitle: 'Nothing planned', emptyBody: 'Add a task for this day, or enjoy the space.', addATask: 'Add a task',
+    events: 'Events & reminders', eventsOnDay: 'Events on this day', upcomingEvents: 'Upcoming events',
+    noEventsTitle: 'No events scheduled', noEventsBody: 'Save upcoming event dates to get automatic reminders 1 week, 2 days, and 1 day ahead.',
+    deleteEventTitle: 'Delete event', deleteEventConfirm: 'Delete "{{title}}"?',
+    reminderBadges: '1w · 2d · 1d',
+    eventToday: 'Today', eventTomorrow: 'Tomorrow', eventInDays: 'In {{count}} days', eventPast: 'Past',
+    eventReminder: {
+      weekTitle: 'Upcoming in 1 week', weekBody: 'Reminder: “{{title}}” is in 7 days.',
+      twoDaysTitle: 'Upcoming in 2 days', twoDaysBody: 'Reminder: “{{title}}” is in 2 days.',
+      oneDayTitle: 'Event tomorrow', oneDayBody: 'Reminder: “{{title}}” is tomorrow.',
+    },
     habits: 'Habits', newHabit: 'New habit', noHabitsTitle: 'No habits today', noHabitsBody: 'Create a habit to build a routine.',
   },
   areas: {
@@ -192,9 +202,19 @@ export const tabsFr: typeof tabsEn = {
   planner: {
     title: 'Agenda', loadError: 'Impossible de charger votre agenda.',
     deleteTitle: 'Supprimer la tâche', deleteConfirm: 'Supprimer « {{title}} » ?', deleteLabel: 'Supprimer {{title}}',
-    prevWeek: 'Semaine précédente', nextWeek: 'Semaine suivante', jumpToday: "Aller à aujourd'hui",
-    overdue: 'En retard', today: "Aujourd'hui", tasks: 'Tâches', addTask: 'Ajouter une tâche',
+    prevWeek: 'Semaine précédente', nextWeek: 'Semaine suivante', jumpToday: "Aller à aujourd'hui", pickDate: 'Choisir une date',
+    overdue: 'En retard', today: "Aujourd'hui", tasks: 'Tâches', addTask: 'Ajouter une tâche', addEvent: 'Ajouter un événement',
     emptyTitle: 'Rien de prévu', emptyBody: 'Ajoutez une tâche pour ce jour, ou profitez du temps libre.', addATask: 'Ajouter une tâche',
+    events: 'Événements et rappels', eventsOnDay: 'Événements du jour', upcomingEvents: 'Événements à venir',
+    noEventsTitle: 'Aucun événement prévu', noEventsBody: 'Enregistrez vos dates importantes pour recevoir un rappel 1 semaine, 2 jours et 1 jour avant.',
+    deleteEventTitle: "Supprimer l'événement", deleteEventConfirm: 'Supprimer « {{title}} » ?',
+    reminderBadges: '1 sem · 2 j · 1 j',
+    eventToday: "Aujourd'hui", eventTomorrow: 'Demain', eventInDays: 'Dans {{count}} jours', eventPast: 'Passé',
+    eventReminder: {
+      weekTitle: 'Dans 1 semaine', weekBody: 'Rappel : « {{title}} » est prévu dans 7 jours.',
+      twoDaysTitle: 'Dans 2 jours', twoDaysBody: 'Rappel : « {{title}} » a lieu dans 2 jours.',
+      oneDayTitle: 'Événement demain', oneDayBody: 'Rappel : « {{title}} » est prévu demain.',
+    },
     habits: 'Habitudes', newHabit: 'Nouvelle habitude', noHabitsTitle: "Aucune habitude aujourd'hui", noHabitsBody: 'Créez une habitude pour bâtir une routine.',
   },
   areas: {

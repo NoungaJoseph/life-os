@@ -1,5 +1,6 @@
 import { adminClient } from '../config/supabase';
 import { logger } from '../utils/logger';
+import { CalendarEventRow, formatEventReminderMessage, pickDueEventReminders } from './event-reminders';
 import { pickDue, PrefRow, ReminderRow, todayFor } from './reminders';
 import { contributionDates } from './group-savings';
 
@@ -57,7 +58,92 @@ export async function dispatchGroupSavings(now = new Date()): Promise<number> {
   }return sent;
 }
 
+export async function dispatchCalendarEventReminders(now = new Date()): Promise<number> {
+  const windowEnd = new Date(now.getTime() + 9 * 86_400_000).toISOString();
+  const { data: events, error } = await adminClient
+    .from('calendar_events')
+    .select('id,user_id,title,starts_at,location')
+    .gte('starts_at', now.toISOString())
+    .lte('starts_at', windowEnd);
+  if (error || !events?.length) {
+    if (error && error.code !== 'PGRST205' && error.code !== '42P01') {
+      logger.error({ code: error.code }, 'calendar event reminder query failed');
+    }
+    return 0;
+  }
+
+  const eventIds = events.map((e: any) => e.id);
+  const { data: deliveries, error: delErr } = await adminClient
+    .from('calendar_event_reminder_deliveries')
+    .select('event_id,offset_days')
+    .in('event_id', eventIds);
+  if (delErr) {
+    if (delErr.code === 'PGRST205' || delErr.code === '42P01') return 0;
+    logger.error({ code: delErr.code }, 'calendar event deliveries query failed');
+    return 0;
+  }
+
+  const sentKeys = new Set((deliveries ?? []).map((d: any) => `${d.event_id}:${d.offset_days}`));
+  const byUser = new Map<string, CalendarEventRow[]>();
+  for (const ev of events as CalendarEventRow[]) {
+    byUser.set(ev.user_id, [...(byUser.get(ev.user_id) ?? []), ev]);
+  }
+  const userIds = [...byUser.keys()];
+  const [profiles, prefs, tokens] = await Promise.all([
+    adminClient.from('profiles').select('id,timezone,language').in('id', userIds),
+    adminClient.from('notification_preferences').select('*').in('user_id', userIds),
+    adminClient.from('push_tokens').select('user_id,token').in('user_id', userIds),
+  ]);
+
+  let sent = 0;
+  for (const uid of userIds) {
+    const profile = profiles.data?.find((p: any) => p.id === uid);
+    const tz = profile?.timezone ?? 'UTC';
+    const lang = profile?.language ?? 'en';
+    const toks = (tokens.data ?? []).filter((t: any) => t.user_id === uid).map((t: any) => t.token);
+    if (!toks.length) continue;
+
+    const due = pickDueEventReminders({
+      now,
+      tz,
+      events: byUser.get(uid)!,
+      prefs: (prefs.data?.find((p: any) => p.user_id === uid) as PrefRow) ?? DEFAULT_PREFS,
+      sentKeys,
+    });
+    for (const item of due) {
+      const claim = await adminClient
+        .from('calendar_event_reminder_deliveries')
+        .insert({ event_id: item.event.id, user_id: uid, offset_days: item.offsetDays, sent_on: todayFor(now, tz) });
+      if (claim.error) continue;
+      const msg = formatEventReminderMessage(item.event.title, item.offsetDays, lang, item.event.location);
+      try {
+        const res = await fetch(EXPO_PUSH, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify(
+            toks.map((to: string) => ({
+              to,
+              title: msg.title,
+              body: msg.body,
+              sound: 'default',
+              data: { kind: 'calendar_event', route: '/(tabs)/planner', date: item.eventDate, eventId: item.event.id },
+            })),
+          ),
+        });
+        if (res.ok) sent++;
+      } catch {
+        logger.warn('calendar event push network error');
+      }
+    }
+  }
+  return sent;
+}
+
 export function startScheduler() {
-  const t = setInterval(() => { Promise.all([dispatchDueReminders(),dispatchGroupSavings()]).catch(() => logger.error('scheduler tick failed')); }, 60_000);
+  const t = setInterval(() => {
+    Promise.all([dispatchDueReminders(), dispatchGroupSavings(), dispatchCalendarEventReminders()]).catch(() =>
+      logger.error('scheduler tick failed'),
+    );
+  }, 60_000);
   t.unref();
 }

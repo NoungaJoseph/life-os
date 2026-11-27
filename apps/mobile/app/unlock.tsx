@@ -7,7 +7,7 @@ import { PinPad } from '../src/components/PinPad';
 import { ErrorText, FadeIn, Press, Screen, Text, success } from '../src/components/ui';
 import { api } from '../src/lib/api';
 import { useLock } from '../src/lib/lock';
-import { verifyLocalPin } from '../src/lib/pin';
+import { verifyAccountPin } from '../src/lib/pin';
 import { useSession } from '../src/lib/session';
 import { signOutDevice } from '../src/lib/signOut';
 import { Profile } from '../src/lib/types';
@@ -32,7 +32,7 @@ export default function Unlock() {
     if (busy || locked || !session) return;
     setBusy(true);
     try {
-      const r = await verifyLocalPin(session.user.id, pin);
+      const r = await verifyAccountPin(session.user.id, pin);
       if (r.ok) {
         success();
         unlock();
@@ -40,6 +40,10 @@ export default function Unlock() {
         return;
       }
       setReset((n) => n + 1);
+      if (r.networkError) {
+        setError(t('common.errors.network'));
+        return;
+      }
       if (r.missing) {
         requirePinSetup();
         router.replace('/create-pin');

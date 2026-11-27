@@ -19,6 +19,8 @@ export function errorMessage(e: unknown, t: TFunction): string {
       case 'RATE_LIMITED': return t('common.errors.rateLimited');
       case 'UNAUTHORIZED': return t('common.errors.unauthorized');
       case 'AI_NOT_CONFIGURED': return t('common.errors.aiOff');
+      case 'GOAL_LOCKED': return t('savings.lockedError');
+      case 'INSUFFICIENT_FUNDS': return t('savings.notEnoughWallet');
     }
   }
   if (e instanceof Error) {

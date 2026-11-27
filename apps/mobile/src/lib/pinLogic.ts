@@ -32,7 +32,44 @@ export function parseStoredPin(raw: string | null | undefined): { version: 2 | 1
 
 export type PinResult =
   | { ok: true }
-  | { ok: false; triesLeft: number; locked: boolean; missing?: boolean };
+  | { ok: false; triesLeft: number; locked: boolean; missing?: boolean; networkError?: boolean };
+
+export type RemotePinVerifyOutcome =
+  | 'ok'
+  | { code: 'WRONG_PIN'; triesLeft: number }
+  | { code: 'PIN_LOCKED' }
+  | { code: 'NO_PIN' }
+  | { code: 'NETWORK_ERROR' };
+
+/** Verify locally first; if this device has no cached PIN, fall back to the server and re-cache on success. */
+export async function verifyPinWithFallback(opts: {
+  uid: string;
+  pin: string;
+  verifyLocal: (uid: string, pin: string) => Promise<PinResult>;
+  setLocal: (uid: string, pin: string) => Promise<void>;
+  verifyRemote: (pin: string) => Promise<RemotePinVerifyOutcome>;
+}): Promise<PinResult> {
+  const local = await opts.verifyLocal(opts.uid, opts.pin);
+  if (local.ok || !local.missing) {
+    return local;
+  }
+  const remote = await opts.verifyRemote(opts.pin);
+  if (remote === 'ok') {
+    await opts.setLocal(opts.uid, opts.pin).catch(() => undefined);
+    return { ok: true };
+  }
+  if (remote.code === 'WRONG_PIN') {
+    const left = Math.max(0, remote.triesLeft);
+    return { ok: false, triesLeft: left, locked: left <= 0 };
+  }
+  if (remote.code === 'PIN_LOCKED') {
+    return { ok: false, triesLeft: 0, locked: true };
+  }
+  if (remote.code === 'NO_PIN') {
+    return { ok: false, triesLeft: 0, locked: false, missing: true };
+  }
+  return { ok: false, triesLeft: 0, locked: false, networkError: true };
+}
 
 export interface PinServiceDeps {
   get: (key: string) => Promise<string | null>;

@@ -7,6 +7,7 @@ import {
   PIN_ROUNDS_LEGACY,
   pinStorageKey,
   pinTriesKey,
+  verifyPinWithFallback,
 } from './pinLogic';
 
 function makeMemoryPinService() {
@@ -104,4 +105,61 @@ test('legacy salt:hash PIN format still verifies cleanly', async () => {
 
   assert.equal(await service.hasLocalPin(uid), true);
   assert.deepEqual(await service.verifyLocalPin(uid, '7351'), { ok: true });
+});
+
+test('verifyPinWithFallback re-caches verified server PIN locally and preserves server error states', async () => {
+  const { service } = makeMemoryPinService();
+  const uid = '550e8400-e29b-41d4-a716-446655440000';
+
+  const okRes = await verifyPinWithFallback({
+    uid,
+    pin: '7391',
+    verifyLocal: service.verifyLocalPin,
+    setLocal: service.setLocalPin,
+    verifyRemote: async () => 'ok',
+  });
+  assert.deepEqual(okRes, { ok: true });
+  assert.equal(await service.hasLocalPin(uid), true);
+
+  const missingUid = '660e8400-e29b-41d4-a716-446655440001';
+  assert.deepEqual(
+    await verifyPinWithFallback({
+      uid: missingUid,
+      pin: '0000',
+      verifyLocal: service.verifyLocalPin,
+      setLocal: service.setLocalPin,
+      verifyRemote: async () => ({ code: 'WRONG_PIN', triesLeft: 3 }),
+    }),
+    { ok: false, triesLeft: 3, locked: false },
+  );
+  assert.deepEqual(
+    await verifyPinWithFallback({
+      uid: missingUid,
+      pin: '0000',
+      verifyLocal: service.verifyLocalPin,
+      setLocal: service.setLocalPin,
+      verifyRemote: async () => ({ code: 'PIN_LOCKED' }),
+    }),
+    { ok: false, triesLeft: 0, locked: true },
+  );
+  assert.deepEqual(
+    await verifyPinWithFallback({
+      uid: missingUid,
+      pin: '0000',
+      verifyLocal: service.verifyLocalPin,
+      setLocal: service.setLocalPin,
+      verifyRemote: async () => ({ code: 'NO_PIN' }),
+    }),
+    { ok: false, triesLeft: 0, locked: false, missing: true },
+  );
+  assert.deepEqual(
+    await verifyPinWithFallback({
+      uid: missingUid,
+      pin: '0000',
+      verifyLocal: service.verifyLocalPin,
+      setLocal: service.setLocalPin,
+      verifyRemote: async () => ({ code: 'NETWORK_ERROR' }),
+    }),
+    { ok: false, triesLeft: 0, locked: false, networkError: true },
+  );
 });

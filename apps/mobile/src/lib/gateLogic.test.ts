@@ -80,3 +80,18 @@ test('waits while session profile onboarding state is loading on an unlocked ses
   assert.equal(d.waiting, true);
   assert.equal(d.redirect, null);
 });
+
+test('language screen never reappears automatically once intro is seen or user is signed in', () => {
+  assert.equal(
+    resolveGateRoute({ ...base, hasSession: true, hasPin: true, locked: true, chosenLanguage: null, introSeen: false }).redirect,
+    '/unlock',
+  );
+  assert.equal(
+    resolveGateRoute({ ...base, hasSession: true, hasPin: true, locked: false, onboardingCompleted: true, chosenLanguage: null, introSeen: false, group: '(tabs)' }).redirect,
+    null,
+  );
+  assert.equal(
+    resolveGateRoute({ ...base, hasSession: false, introSeen: true, chosenLanguage: null }).redirect,
+    '/login',
+  );
+});

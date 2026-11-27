@@ -1,16 +1,18 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  AndroidImportance,
   SchedulableTriggerInputTypes,
   cancelScheduledNotificationAsync,
-  getPermissionsAsync,
-  requestPermissionsAsync,
   scheduleNotificationAsync,
-  setNotificationChannelAsync,
 } from 'expo-notifications';
 import { useSyncExternalStore } from 'react';
 import { Platform } from 'react-native';
 import { DEFAULT_CHECKIN_TIME, localDateKey, shouldPromptEveningCheckin } from './eveningCheckinLogic';
+import {
+  NOTIFICATION_CHANNEL_ID,
+  configureNotifications,
+  ensureLocalNotificationPermission,
+  ensureNotificationChannel,
+} from './notificationsSetup';
 import { parseTime } from './timeInput';
 
 const ENABLED_KEY = 'mylifeos:evening-checkin:enabled';
@@ -142,6 +144,7 @@ export function isEveningPromptDue(s: EveningCheckinState, now = new Date()): bo
 
 export async function syncEveningCheckinNotification(title: string, body: string, requestIfNeeded = false): Promise<void> {
   if (Platform.OS === 'web') return;
+  configureNotifications();
   try {
     const existingId = await AsyncStorage.getItem(NOTIF_ID_KEY);
     if (existingId) {
@@ -151,30 +154,24 @@ export async function syncEveningCheckinNotification(title: string, body: string
     const current = state.loaded ? state : await loadEveningCheckinState();
     if (!current.enabled) return;
 
-    let { status } = await getPermissionsAsync();
-    if (status !== 'granted' && requestIfNeeded) {
-      status = (await requestPermissionsAsync()).status;
-    }
-    if (status !== 'granted') return;
+    const perm = await ensureLocalNotificationPermission({ requestIfNeeded });
+    if (perm !== 'granted') return;
 
-    if (Platform.OS === 'android') {
-      await setNotificationChannelAsync('default', {
-        name: title,
-        importance: AndroidImportance.DEFAULT,
-      });
-    }
+    await ensureNotificationChannel(title);
 
     const parsed = parseTime(current.time) ?? { hour: 22, minute: 0 };
     const id = await scheduleNotificationAsync({
       content: {
         title,
         body,
+        sound: 'default',
         data: { route: '/evening-checkin' },
       },
       trigger: {
         type: SchedulableTriggerInputTypes.DAILY,
         hour: parsed.hour,
         minute: parsed.minute,
+        channelId: NOTIFICATION_CHANNEL_ID,
       },
     });
     await AsyncStorage.setItem(NOTIF_ID_KEY, id);

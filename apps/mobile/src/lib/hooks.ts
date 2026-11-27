@@ -1,15 +1,30 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
+import { useSession } from './session';
 import { Dashboard, GoalView, InsightsPayload, Task } from './types';
 
-export const useDashboard = () => useQuery({ queryKey: ['dashboard'], queryFn: () => api<Dashboard>('/dashboard/today') });
-export const useGoalsOverview = () => useQuery({ queryKey: ['goals', 'overview'], queryFn: () => api<GoalView[]>('/goals-overview') });
-export const useInsights = () => useQuery({ queryKey: ['insights'], queryFn: () => api<InsightsPayload>('/insights') });
+function useAuthQueryEnabled() {
+  const { session } = useSession();
+  return Boolean(session) || process.env.EXPO_PUBLIC_VISUAL_TESTS === '1';
+}
+
+export const useDashboard = () => {
+  const enabled = useAuthQueryEnabled();
+  return useQuery({ queryKey: ['dashboard'], queryFn: () => api<Dashboard>('/dashboard/today'), enabled });
+};
+export const useGoalsOverview = () => {
+  const enabled = useAuthQueryEnabled();
+  return useQuery({ queryKey: ['goals', 'overview'], queryFn: () => api<GoalView[]>('/goals-overview'), enabled });
+};
+export const useInsights = () => {
+  const enabled = useAuthQueryEnabled();
+  return useQuery({ queryKey: ['insights'], queryFn: () => api<InsightsPayload>('/insights'), enabled });
+};
 
 /** Everything derived from tasks, habits or goals must refresh together so numbers never disagree. */
 export function useRefreshAll() {
   const qc = useQueryClient();
-  return () => Promise.all(['dashboard', 'goals', 'insights', 'tasks', 'journal', 'vault'].map((k) => qc.invalidateQueries({ queryKey: [k] })));
+  return () => Promise.all(['dashboard', 'goals', 'insights', 'tasks', 'calendar-events', 'journal', 'vault'].map((k) => qc.invalidateQueries({ queryKey: [k] })));
 }
 
 /** One-tap task completion with an optimistic update. */

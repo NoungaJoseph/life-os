@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { Button, FadeIn, Press, Screen, Text, tap } from '../src/components/ui';
 import { Lang, setLanguage } from '../src/i18n';
+import { useSession } from '../src/lib/session';
+import { useIntroSeen } from '../src/lib/tutorial';
 import { useTheme } from '../src/theme/useTheme';
 
 const OPTIONS: { code: Lang; label: 'french' | 'english'; hint: 'frenchHint' | 'englishHint' }[] = [
@@ -18,12 +20,17 @@ export default function LanguageScreen() {
   const th = useTheme();
   const router = useRouter();
   const { from } = useLocalSearchParams<{ from?: string }>();
+  const { session } = useSession();
+  const introSeen = useIntroSeen();
   const [choice, setChoice] = useState<Lang>(i18n.language === 'fr' ? 'fr' : 'en');
 
   const pick = (c: Lang) => { tap(); setChoice(c); void i18n.changeLanguage(c); };
   const confirm = async () => {
     await setLanguage(choice);
-    router.replace(from === 'settings' ? '/settings' : from === 'auth' ? '/login' : '/tutorial');
+    if (from === 'settings') { router.replace('/settings'); return; }
+    if (from === 'auth') { router.replace('/login'); return; }
+    if (session) { router.replace('/'); return; }
+    router.replace(introSeen ? '/login' : '/tutorial');
   };
 
   return (

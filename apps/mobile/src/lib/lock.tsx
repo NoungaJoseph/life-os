@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
+import { api } from './api';
 import { hasLocalPin } from './pin';
 import { useSession } from './session';
 
@@ -51,13 +52,28 @@ export function LockProvider({ children }: { children: React.ReactNode }) {
       leftAt.current = null;
       return;
     }
+    let cancelled = false;
     setHasPin(null);
-    void hasLocalPin(uid).then((exists) => {
-      setHasPin(exists);
-      // A persisted session must never reveal app content before the local PIN.
-      // pinCreated() explicitly unlocks the first session after setup.
-      if (exists) setLocked(true);
-    });
+    void (async () => {
+      const localExists = await hasLocalPin(uid);
+      if (cancelled) return;
+      if (localExists) {
+        setHasPin(true);
+        // A persisted session must never reveal app content before the local PIN.
+        // pinCreated() explicitly unlocks the first session after setup.
+        setLocked(true);
+        return;
+      }
+      const remote = await api<{ has_pin: boolean }>('/security/pin').catch(() => null);
+      if (cancelled) return;
+      if (remote?.has_pin) {
+        setHasPin(true);
+        setLocked(true);
+        return;
+      }
+      setHasPin(false);
+    })();
+    return () => { cancelled = true; };
   }, [uid]);
 
   useEffect(() => {

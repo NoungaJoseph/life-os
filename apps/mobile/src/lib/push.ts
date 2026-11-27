@@ -4,10 +4,9 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import i18n from '../i18n';
 import { api } from './api';
+import { configureNotifications, ensureNotificationChannel } from './notificationsSetup';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: false, shouldSetBadge: false }),
-});
+configureNotifications();
 
 export type PushResult = { ok: true } | { ok: false; reason: 'web' | 'emulator' | 'expoGo' | 'noProject' | 'blocked' };
 
@@ -18,7 +17,8 @@ export async function enablePush(): Promise<PushResult> {
   if (Constants.appOwnership === 'expo') return { ok: false, reason: 'expoGo' };
   const projectId = (Constants.expoConfig?.extra as any)?.eas?.projectId ?? (Constants as any).easConfig?.projectId;
   if (!projectId) return { ok: false, reason: 'noProject' };
-  if (Platform.OS === 'android') await Notifications.setNotificationChannelAsync('default', { name: i18n.t('ui.push.channel') as string, importance: Notifications.AndroidImportance.DEFAULT });
+  configureNotifications();
+  await ensureNotificationChannel(i18n.t('ui.push.channel') as string);
   let { status } = await Notifications.getPermissionsAsync();
   if (status !== 'granted') status = (await Notifications.requestPermissionsAsync()).status;
   if (status !== 'granted') return { ok: false, reason: 'blocked' };

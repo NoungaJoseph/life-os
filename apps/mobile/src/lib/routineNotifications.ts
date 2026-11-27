@@ -1,16 +1,18 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  AndroidImportance,
   SchedulableTriggerInputTypes,
   cancelScheduledNotificationAsync,
-  getPermissionsAsync,
-  requestPermissionsAsync,
   scheduleNotificationAsync,
-  setNotificationChannelAsync,
 } from 'expo-notifications';
 import { useSyncExternalStore } from 'react';
 import { Platform } from 'react-native';
 import { localDateKey } from './eveningCheckinLogic';
+import {
+  NOTIFICATION_CHANNEL_ID,
+  configureNotifications,
+  ensureLocalNotificationPermission,
+  ensureNotificationChannel,
+} from './notificationsSetup';
 import { DEFAULT_ROUTINE_TIMES, MealSlot } from './routineLogic';
 import { parseTime } from './timeInput';
 
@@ -85,16 +87,7 @@ export const useRoutineState = () =>
   );
 
 export async function requestLocalNotificationPermission(): Promise<'granted' | 'denied' | 'web'> {
-  if (Platform.OS === 'web') return 'web';
-  try {
-    let { status } = await getPermissionsAsync();
-    if (status !== 'granted') {
-      status = (await requestPermissionsAsync()).status;
-    }
-    return status === 'granted' ? 'granted' : 'denied';
-  } catch {
-    return 'denied';
-  }
+  return ensureLocalNotificationPermission({ requestIfNeeded: true });
 }
 
 function validTime(raw: string | null | undefined, fallback: string): string {
@@ -253,6 +246,7 @@ export interface RoutineNotificationCopy {
 
 export async function syncRoutineNotifications(copy: RoutineNotificationCopy, requestIfNeeded = false): Promise<'scheduled' | 'denied' | 'web'> {
   if (Platform.OS === 'web') return 'web';
+  configureNotifications();
   try {
     const rawIds = await AsyncStorage.getItem(KEYS.notifIds);
     if (rawIds) {
@@ -264,28 +258,22 @@ export async function syncRoutineNotifications(copy: RoutineNotificationCopy, re
     }
 
     const current = state.loaded ? state : await loadRoutineState();
-    let { status } = await getPermissionsAsync();
-    if (status !== 'granted' && requestIfNeeded) {
-      status = (await requestPermissionsAsync()).status;
-    }
-    if (status !== 'granted') return 'denied';
+    const perm = await ensureLocalNotificationPermission({ requestIfNeeded });
+    if (perm !== 'granted') return 'denied';
 
-    if (Platform.OS === 'android') {
-      await setNotificationChannelAsync('default', {
-        name: copy.channelName,
-        importance: AndroidImportance.DEFAULT,
-      });
-    }
+    await ensureNotificationChannel(copy.channelName);
 
     const scheduledIds: string[] = [];
 
     if (current.morningEnabled) {
       const m = parseTime(current.morningTime) ?? { hour: 7, minute: 0 };
-      const id = await scheduleNotificationAsync({
-        content: { title: copy.morningTitle, body: copy.morningBody, data: { route: '/morning-plan' } },
-        trigger: { type: SchedulableTriggerInputTypes.DAILY, hour: m.hour, minute: m.minute },
-      });
-      scheduledIds.push(id);
+      try {
+        const id = await scheduleNotificationAsync({
+          content: { title: copy.morningTitle, body: copy.morningBody, sound: 'default', data: { route: '/morning-plan' } },
+          trigger: { type: SchedulableTriggerInputTypes.DAILY, hour: m.hour, minute: m.minute, channelId: NOTIFICATION_CHANNEL_ID },
+        });
+        scheduledIds.push(id);
+      } catch { /* continue scheduling other alerts */ }
     }
 
     if (current.mealsEnabled) {
@@ -297,20 +285,24 @@ export async function syncRoutineNotifications(copy: RoutineNotificationCopy, re
       for (const [slot, hhmm, title, body] of meals) {
         const parsed = parseTime(hhmm);
         if (!parsed) continue;
-        const id = await scheduleNotificationAsync({
-          content: { title, body, data: { route: '/morning-plan', meal: slot } },
-          trigger: { type: SchedulableTriggerInputTypes.DAILY, hour: parsed.hour, minute: parsed.minute },
-        });
-        scheduledIds.push(id);
+        try {
+          const id = await scheduleNotificationAsync({
+            content: { title, body, sound: 'default', data: { route: '/morning-plan', meal: slot } },
+            trigger: { type: SchedulableTriggerInputTypes.DAILY, hour: parsed.hour, minute: parsed.minute, channelId: NOTIFICATION_CHANNEL_ID },
+          });
+          scheduledIds.push(id);
+        } catch { /* continue scheduling other alerts */ }
       }
     }
 
     if (current.monthlyReportEnabled) {
-      const id = await scheduleNotificationAsync({
-        content: { title: copy.monthlyTitle, body: copy.monthlyBody, data: { route: '/review', tab: 'report' } },
-        trigger: { type: SchedulableTriggerInputTypes.MONTHLY, day: 1, hour: 9, minute: 0 },
-      });
-      scheduledIds.push(id);
+      try {
+        const id = await scheduleNotificationAsync({
+          content: { title: copy.monthlyTitle, body: copy.monthlyBody, sound: 'default', data: { route: '/review', tab: 'report' } },
+          trigger: { type: SchedulableTriggerInputTypes.MONTHLY, day: 1, hour: 9, minute: 0, channelId: NOTIFICATION_CHANNEL_ID },
+        });
+        scheduledIds.push(id);
+      } catch { /* monthly calendar trigger fallback skipped safely */ }
     }
 
     await AsyncStorage.setItem(KEYS.notifIds, JSON.stringify(scheduledIds));

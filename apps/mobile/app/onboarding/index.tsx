@@ -8,6 +8,8 @@ import { Button, Card, Chip, ErrorText, Field, Loading, Pill, ProgressBar, Row, 
 import { setLanguage as setAppLanguage } from '../../src/i18n';
 import { areaText, pillarName } from '../../src/i18n/helpers';
 import { api } from '../../src/lib/api';
+import { useLock } from '../../src/lib/lock';
+import { validateOnboardingStep } from '../../src/lib/onboardingValidation';
 import { wasIntroViewedThisSession } from '../../src/lib/tutorial';
 import { LifeArea, LifeVision, Pillar, Preferences, Profile, UserLifeArea } from '../../src/lib/types';
 import { useTheme } from '../../src/theme/useTheme';
@@ -17,7 +19,6 @@ const CURRENCIES = ['XAF', 'USD', 'EUR', 'NGN', 'GBP'];
 const LANGUAGES = ['en', 'fr'] as const;
 const DAYS: [number, string][] = [[1, 'mon'], [2, 'tue'], [3, 'wed'], [4, 'thu'], [5, 'fri'], [6, 'sat'], [0, 'sun']];
 const GOAL_TYPES = ['long_term', 'annual', 'monthly'] as const;
-const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 interface NewGoal { title: string; goal_type: string }
 
@@ -26,6 +27,7 @@ export default function Onboarding() {
   const th = useTheme();
   const router = useRouter();
   const qc = useQueryClient();
+  const lock = useLock();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const isEdit = edit === '1';
 
@@ -38,6 +40,7 @@ export default function Onboarding() {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [missingFields, setMissingFields] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
 
   const [name, setName] = useState('');
@@ -83,27 +86,25 @@ export default function Onboarding() {
     return err ? <Screen><ErrorText message={err.message} /></Screen> : <Loading />;
   }
 
-  const setPref = <K extends keyof Preferences>(key: K, patch: Partial<NonNullable<Preferences[K]>>) =>
+  const clearValidation = () => {
+    if (error) setError(null);
+    if (missingFields.length > 0) setMissingFields([]);
+  };
+
+  const setPref = <K extends keyof Preferences>(key: K, patch: Partial<NonNullable<Preferences[K]>>) => {
+    clearValidation();
     setPrefs((p) => ({ ...p, [key]: { ...(p[key] as object | undefined), ...patch } }));
+  };
 
   const planning = prefs.planning ?? { daily: true, weekly: true, monthly: true };
   const routine = prefs.routine ?? {};
   const titles = t('onboarding.titles', { returnObjects: true }) as string[];
-
-  function validate(): string | null {
-    if (step === 0 && !name.trim()) return t('onboarding.errors.name');
-    if (step === 7) {
-      for (const tm of [routine.work_start, routine.work_end, routine.reading_time, routine.exercise_time]) {
-        if (tm && !TIME_RE.test(tm)) return t('onboarding.errors.time');
-      }
-    }
-    return null;
-  }
+  const fieldErr = (fieldKey: string) => (missingFields.includes(fieldKey) ? t('common.errors.required') : undefined);
 
   async function save(): Promise<void> {
     switch (step) {
       case 0:
-        await api('/profile', { method: 'PATCH', body: { display_name: name.trim(), timezone, currency, language } });
+        await api('/profile', { method: 'PATCH', body: { display_name: name.trim(), timezone: timezone.trim(), currency, language } });
         break;
       case 1:
       case 2:
@@ -152,14 +153,34 @@ export default function Onboarding() {
       router.replace('/tutorial');
       return;
     }
-    router.replace('/create-pin');
+    router.replace(lock.hasPin ? '/' : '/create-pin');
   }
 
   async function next() {
-    const problem = validate();
-    if (problem) return setError(problem);
+    const check = validateOnboardingStep(step, {
+      isEdit,
+      name,
+      timezone,
+      identity,
+      idealLife,
+      ambitions,
+      priorities,
+      active,
+      obstacles: prefs.challenges?.obstacles ?? '',
+      distractions: prefs.challenges?.distractions ?? '',
+      improve: prefs.challenges?.improve ?? '',
+      planning,
+      goals,
+      routine,
+    });
+    if (check.errorKey) {
+      setMissingFields(check.missingFields);
+      setError(t(check.errorKey));
+      return;
+    }
     setSaving(true);
     setError(null);
+    setMissingFields([]);
     try {
       await save();
       if (step === STEP_COUNT - 1) {
@@ -191,8 +212,19 @@ export default function Onboarding() {
 
       {step === 0 && (
         <Card className="gap-3">
-          <Field label={t('onboarding.name')} value={name} onChangeText={setName} />
-          <Field label={t('onboarding.timezone')} value={timezone} onChangeText={setTimezone} autoCapitalize="none" />
+          <Field
+            label={t('onboarding.name')}
+            value={name}
+            onChangeText={(v) => { clearValidation(); setName(v); }}
+            error={fieldErr('name')}
+          />
+          <Field
+            label={t('onboarding.timezone')}
+            value={timezone}
+            onChangeText={(v) => { clearValidation(); setTimezone(v); }}
+            autoCapitalize="none"
+            error={fieldErr('timezone')}
+          />
           <Text size="sm" weight="600">{t('onboarding.currency')}</Text>
           <Row>{CURRENCIES.map((c) => <Chip key={c} label={c} selected={currency === c} onPress={() => setCurrency(c)} />)}</Row>
           <Text size="sm" weight="600">{t('onboarding.language')}</Text>
@@ -214,9 +246,27 @@ export default function Onboarding() {
 
       {step === 1 && (
         <Card className="gap-3">
-          <Field label={t('onboarding.identity')} multiline value={identity} onChangeText={setIdentity} />
-          <Field label={t('onboarding.idealLife')} multiline value={idealLife} onChangeText={setIdealLife} />
-          <Field label={t('onboarding.ambitions')} multiline value={ambitions} onChangeText={setAmbitions} />
+          <Field
+            label={t('onboarding.identity')}
+            multiline
+            value={identity}
+            onChangeText={(v) => { clearValidation(); setIdentity(v); }}
+            error={fieldErr('identity')}
+          />
+          <Field
+            label={t('onboarding.idealLife')}
+            multiline
+            value={idealLife}
+            onChangeText={(v) => { clearValidation(); setIdealLife(v); }}
+            error={fieldErr('idealLife')}
+          />
+          <Field
+            label={t('onboarding.ambitions')}
+            multiline
+            value={ambitions}
+            onChangeText={(v) => { clearValidation(); setAmbitions(v); }}
+            error={fieldErr('ambitions')}
+          />
         </Card>
       )}
 
@@ -231,7 +281,8 @@ export default function Onboarding() {
                 label={t('onboarding.priorities')}
                 multiline
                 value={priorities[p.slug] ?? ''}
-                onChangeText={(v) => setPriorities((s) => ({ ...s, [p.slug]: v }))}
+                onChangeText={(v) => { clearValidation(); setPriorities((s) => ({ ...s, [p.slug]: v })); }}
+                error={fieldErr('pillars')}
               />
             </Card>
           ))}
@@ -247,7 +298,7 @@ export default function Onboarding() {
                 key={a.id}
                 label={areaText(t, a).name}
                 selected={!!active[a.id]}
-                onPress={() => setActive((s) => ({ ...s, [a.id]: !s[a.id] }))}
+                onPress={() => { clearValidation(); setActive((s) => ({ ...s, [a.id]: !s[a.id] })); }}
               />
             ))}
           </Row>
@@ -261,18 +312,21 @@ export default function Onboarding() {
             multiline
             value={prefs.challenges?.obstacles ?? ''}
             onChangeText={(v) => setPref('challenges', { obstacles: v })}
+            error={fieldErr('obstacles')}
           />
           <Field
             label={t('onboarding.distractions')}
             multiline
             value={prefs.challenges?.distractions ?? ''}
             onChangeText={(v) => setPref('challenges', { distractions: v })}
+            error={fieldErr('distractions')}
           />
           <Field
             label={t('onboarding.improve')}
             multiline
             value={prefs.challenges?.improve ?? ''}
             onChangeText={(v) => setPref('challenges', { improve: v })}
+            error={fieldErr('improve')}
           />
         </Card>
       )}
@@ -303,7 +357,11 @@ export default function Onboarding() {
               <Field
                 label={t('onboarding.goalN', { n: i + 1 })}
                 value={g.title}
-                onChangeText={(v) => setGoals((arr) => arr.map((x, j) => (j === i ? { ...x, title: v } : x)))}
+                onChangeText={(v) => {
+                  clearValidation();
+                  setGoals((arr) => arr.map((x, j) => (j === i ? { ...x, title: v } : x)));
+                }}
+                error={i === 0 ? fieldErr('goal0') : undefined}
               />
               <Row>
                 {GOAL_TYPES.map((type) => (
@@ -325,10 +383,30 @@ export default function Onboarding() {
 
       {step === 7 && (
         <Card className="gap-3">
-          <TimeField label={t('onboarding.workStart')} value={routine.work_start ?? ''} onChange={(v) => setPref('routine', { work_start: v })} />
-          <TimeField label={t('onboarding.workEnd')} value={routine.work_end ?? ''} onChange={(v) => setPref('routine', { work_end: v })} />
-          <TimeField label={t('onboarding.readingTime')} value={routine.reading_time ?? ''} onChange={(v) => setPref('routine', { reading_time: v })} />
-          <Text size="sm" weight="600">{t('onboarding.exerciseDays')}</Text>
+          <TimeField
+            label={t('onboarding.workStart')}
+            value={routine.work_start ?? ''}
+            onChange={(v) => setPref('routine', { work_start: v })}
+            error={fieldErr('work_start')}
+            required
+          />
+          <TimeField
+            label={t('onboarding.workEnd')}
+            value={routine.work_end ?? ''}
+            onChange={(v) => setPref('routine', { work_end: v })}
+            error={fieldErr('work_end')}
+            required
+          />
+          <TimeField
+            label={t('onboarding.readingTime')}
+            value={routine.reading_time ?? ''}
+            onChange={(v) => setPref('routine', { reading_time: v })}
+            error={fieldErr('reading_time')}
+            required
+          />
+          <Text size="sm" weight="600" color={missingFields.includes('exercise_days') ? th.error : undefined}>
+            {t('onboarding.exerciseDays')}
+          </Text>
           <Row>
             {DAYS.map(([d, key]) => {
               const days = routine.exercise_days ?? [];
@@ -342,13 +420,26 @@ export default function Onboarding() {
               );
             })}
           </Row>
-          <TimeField label={t('onboarding.exerciseTime')} value={routine.exercise_time ?? ''} onChange={(v) => setPref('routine', { exercise_time: v })} />
+          <TimeField
+            label={t('onboarding.exerciseTime')}
+            value={routine.exercise_time ?? ''}
+            onChange={(v) => setPref('routine', { exercise_time: v })}
+            error={fieldErr('exercise_time')}
+            required
+          />
         </Card>
       )}
 
       <ErrorText message={error} />
       <Button title={last ? t('onboarding.finish') : t('common.continue')} onPress={() => void next()} loading={saving} />
-      {step > 0 && <Button title={t('common.back')} variant="ghost" onPress={() => { setError(null); setStep(step - 1); }} disabled={saving} />}
+      {step > 0 && (
+        <Button
+          title={t('common.back')}
+          variant="ghost"
+          onPress={() => { setError(null); setMissingFields([]); setStep(step - 1); }}
+          disabled={saving}
+        />
+      )}
       <Button title={isEdit ? t('common.close') : t('tutorial.skip')} variant="ghost" onPress={() => void completeOnboarding()} disabled={saving} />
     </Screen>
   );

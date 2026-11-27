@@ -77,3 +77,13 @@ export interface InsightsPayload {
 }
 export interface Milestone { id: string; title: string; due_date: string | null; completed_at: string | null }
 export interface JournalEntry { id: string; entry_date: string; mood: number | null; content: string; created_at: string }
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  kind: 'event' | 'meeting' | 'follow_up' | 'reminder';
+  starts_at: string;
+  ends_at?: string | null;
+  location?: string | null;
+  notes?: string | null;
+  life_area_id?: string | null;
+}
